@@ -5,6 +5,7 @@ import { generateLegalSetup } from "../lib/legal/ai";
 import { LegalChecklist } from "../components/LegalChecklist";
 import { templates } from "../lib/legal/templates";
 import LegalFormsBoard from "../components/LegalFormsBoard";
+import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 
 type SavedSelection = {
   savedAt: string;
@@ -45,6 +46,12 @@ export default function Phase2Page() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [checklistProgress, setChecklistProgress] = useState<{ completed: number; total: number; percent: number }>({
+    completed: 0,
+    total: 0,
+    percent: 0,
+  });
+
   // Load selection from Phase 1
   useEffect(() => {
     setSelection(readSelection());
@@ -59,6 +66,7 @@ export default function Phase2Page() {
 
       setError(null);
       setLoading(true);
+
       try {
         const aiResult = await generateLegalSetup(
           selection.founder,
@@ -68,6 +76,9 @@ export default function Phase2Page() {
 
         if (!aiResult) throw new Error("Legal setup returned empty result.");
         setLegalSetup(aiResult);
+
+        // Ensure Phase 1 is recognized as complete once a selection exists
+        setPhaseCompleted("phase1", true);
       } catch (e: any) {
         setError(e?.message ?? "Failed to generate legal setup.");
       } finally {
@@ -77,6 +88,13 @@ export default function Phase2Page() {
 
     run();
   }, [selection]);
+
+  // When checklist hits 100%, mark Phase 2 complete.
+  useEffect(() => {
+    if (checklistProgress.total > 0 && checklistProgress.completed === checklistProgress.total) {
+      setPhaseCompleted("phase2", true);
+    }
+  }, [checklistProgress]);
 
   const templateLinks = useMemo(() => {
     if (!legalSetup?.templates?.length) return [];
@@ -90,11 +108,9 @@ export default function Phase2Page() {
     return (
       <div className="space-y-6">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Phase 2: Business Setup & Legal
-          </h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Phase 2: Business Setup & Legal</h1>
           <p className="mt-2 text-sm text-white/60">
-            No idea selected yet. Go to Phase 1 and select an idea first.
+            You haven’t selected an idea yet. Start in Phase 1, choose the idea you want to build, then come back here.
           </p>
         </div>
 
@@ -108,16 +124,64 @@ export default function Phase2Page() {
     );
   }
 
+  const phase2Complete = checklistProgress.total > 0 && checklistProgress.completed === checklistProgress.total;
+
   return (
     <div className="space-y-8">
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-        <h1 className="text-3xl font-semibold tracking-tight">
-          Phase 2: Business Setup & Legal
-        </h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Phase 2: Business Setup & Legal</h1>
         <p className="mt-2 text-sm text-white/60">
           Selected idea: <span className="text-white">{ideaName}</span> • Location:{" "}
           <span className="text-white">{location}</span>
         </p>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+            <p className="text-xs uppercase tracking-wide text-white/50">Checklist progress</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{checklistProgress.percent}%</p>
+            <p className="mt-1 text-sm text-white/60">
+              {checklistProgress.total ? `${checklistProgress.completed}/${checklistProgress.total} completed` : "Loading…"}
+            </p>
+          </div>
+
+          <div className="rounded-xl border border-white/10 bg-black/20 p-4 md:col-span-2">
+            <p className="text-xs uppercase tracking-wide text-white/50">Recommended flow</p>
+            <p className="mt-1 text-sm text-white/70">
+              Start with the checklist, then open official forms and resources. You can revisit any phase at any time —
+              your progress is saved locally.
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <a
+                href="/phase1"
+                className="inline-flex rounded-lg bg-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/15"
+              >
+                ← Back to Phase 1
+              </a>
+
+              <a
+                href="/phase3"
+                className={[
+                  "inline-flex rounded-lg px-4 py-2 text-sm font-semibold text-white",
+                  phase2Complete ? "bg-emerald-600 hover:bg-emerald-500" : "bg-indigo-600 hover:bg-indigo-500",
+                ].join(" ")}
+                title={
+                  phase2Complete
+                    ? "Continue to Phase 3"
+                    : "You can continue now, but completing the checklist first will make Phase 3 more effective."
+                }
+              >
+                {phase2Complete ? "Continue to Phase 3 →" : "Continue to Phase 3 →"}
+              </a>
+
+              {!phase2Complete && (
+                <span className="text-xs text-white/50">
+                  Recommended: finish Phase 2 first for the strongest brand and website output.
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {loading && (
@@ -128,27 +192,32 @@ export default function Phase2Page() {
 
       {error && (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6 text-red-200">
-          {error}
+          <div className="font-semibold">Something went wrong</div>
+          <div className="mt-2 text-sm opacity-90">{error}</div>
         </div>
       )}
 
       {legalSetup && (
         <>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold">Recommended Business Structure</h2>
+            <h2 className="text-xl font-semibold">Recommended business structure</h2>
             <p className="mt-2 text-white/70">{legalSetup.recommendedStructure}</p>
+            <p className="mt-2 text-sm text-white/60">
+              This is educational guidance, not legal advice. Always verify requirements with official sources for your
+              state and industry.
+            </p>
           </div>
 
-          {/* NOW CLICKABLE + SAVED */}
           <LegalChecklist
             checklist={legalSetup.checklist || []}
             storageKey={LEGAL_PROGRESS_KEY}
+            onProgress={setChecklistProgress}
           />
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold">Templates & Resources</h2>
+            <h2 className="text-xl font-semibold">Templates & resources</h2>
             <p className="mt-2 text-sm text-white/60">
-              Quick links to common docs. (We’ll keep expanding this into more “official forms”.)
+              Quick links to common documents. When possible, use official state or federal sources.
             </p>
 
             <ul className="mt-4 list-disc space-y-2 pl-6 text-white/80">
@@ -172,15 +241,11 @@ export default function Phase2Page() {
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <h2 className="text-xl font-semibold">AI Guidance & Notes</h2>
+            <h2 className="text-xl font-semibold">AI guidance & notes</h2>
             <p className="mt-2 whitespace-pre-wrap text-white/70">{legalSetup.notes}</p>
           </div>
 
-          {/* Workflow board */}
-          <LegalFormsBoard
-            storageKey={LEGAL_PROGRESS_KEY}
-            businessType={legalSetup.recommendedStructure}
-          />
+          <LegalFormsBoard storageKey={LEGAL_PROGRESS_KEY} businessType={legalSetup.recommendedStructure} />
         </>
       )}
     </div>
