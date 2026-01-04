@@ -1,43 +1,20 @@
-import OpenAI from "openai";
-import { FounderProfile } from "../types/business";
+import type { FounderProfile, LegalSetup } from "../../types/business";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-export async function generateLegalSetup(founder: FounderProfile, businessName: string, location: string) {
-  const prompt = `
-You are a senior business consultant.
-
-Given a founder profile and business name, generate:
-1. Recommended business structure (LLC, Sole Prop, S-Corp)
-2. Step-by-step legal checklist for registration
-3. List of templates with guidance
-4. Notes & disclaimers
-
-Founder Profile: ${JSON.stringify(founder)}
-Business Name: ${businessName}
-Location: ${location}
-
-Output JSON:
-{
-  "recommendedStructure": "",
-  "checklist": [{"step": "", "completed": false}],
-  "templates": [{"name": "", "link": ""}],
-  "notes": ""
-}
-`;
-
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [{ role: "system", content: "You are a legal/business setup advisor AI." }, { role: "user", content: prompt }],
-    temperature: 0.7,
-    max_tokens: 1000
+export async function generateLegalSetup(
+  founder: FounderProfile,
+  businessName: string,
+  location: string
+): Promise<LegalSetup> {
+  const res = await fetch("/api/legal", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ founder, businessName, location }),
   });
 
-  try {
-    const text = response.choices[0].message?.content || "{}";
-    return JSON.parse(text);
-  } catch (err) {
-    console.error("AI parsing error:", err);
-    return null;
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error || "Legal setup generation failed.");
   }
+
+  return (await res.json()) as LegalSetup;
 }
