@@ -22,8 +22,6 @@ type LegalSetup = {
 };
 
 const SELECTION_KEY = "ai-business-os:selected-idea";
-
-// IMPORTANT: shared key so BOTH widgets persist together
 const LEGAL_PROGRESS_KEY = "ai-business-os:legal-steps:done:usa";
 
 function readSelection(): SavedSelection | null {
@@ -41,18 +39,12 @@ function readSelection(): SavedSelection | null {
 
 export default function Phase2Page() {
   const [selection, setSelection] = useState<SavedSelection | null>(null);
-
   const [legalSetup, setLegalSetup] = useState<LegalSetup | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [checklistProgress, setChecklistProgress] = useState<{ completed: number; total: number; percent: number }>({
-    completed: 0,
-    total: 0,
-    percent: 0,
-  });
+  const [progress, setProgress] = useState({ completed: 0, total: 0, percent: 0 });
 
-  // Load selection from Phase 1
   useEffect(() => {
     setSelection(readSelection());
   }, []);
@@ -66,7 +58,6 @@ export default function Phase2Page() {
 
       setError(null);
       setLoading(true);
-
       try {
         const aiResult = await generateLegalSetup(
           selection.founder,
@@ -77,7 +68,7 @@ export default function Phase2Page() {
         if (!aiResult) throw new Error("Legal setup returned empty result.");
         setLegalSetup(aiResult);
 
-        // Ensure Phase 1 is recognized as complete once a selection exists
+        // Phase 1 is "done" if a selection exists
         setPhaseCompleted("phase1", true);
       } catch (e: any) {
         setError(e?.message ?? "Failed to generate legal setup.");
@@ -89,12 +80,11 @@ export default function Phase2Page() {
     run();
   }, [selection]);
 
-  // When checklist hits 100%, mark Phase 2 complete.
   useEffect(() => {
-    if (checklistProgress.total > 0 && checklistProgress.completed === checklistProgress.total) {
+    if (progress.total > 0 && progress.completed === progress.total) {
       setPhaseCompleted("phase2", true);
     }
-  }, [checklistProgress]);
+  }, [progress]);
 
   const templateLinks = useMemo(() => {
     if (!legalSetup?.templates?.length) return [];
@@ -109,9 +99,7 @@ export default function Phase2Page() {
       <div className="space-y-6">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
           <h1 className="text-3xl font-semibold tracking-tight">Phase 2: Business Setup & Legal</h1>
-          <p className="mt-2 text-sm text-white/60">
-            You haven’t selected an idea yet. Start in Phase 1, choose the idea you want to build, then come back here.
-          </p>
+          <p className="mt-2 text-sm text-white/60">No idea selected yet. Go to Phase 1 and select an idea first.</p>
         </div>
 
         <a
@@ -124,7 +112,7 @@ export default function Phase2Page() {
     );
   }
 
-  const phase2Complete = checklistProgress.total > 0 && checklistProgress.completed === checklistProgress.total;
+  const phase2Complete = progress.total > 0 && progress.completed === progress.total;
 
   return (
     <div className="space-y-8">
@@ -138,17 +126,17 @@ export default function Phase2Page() {
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="text-xs uppercase tracking-wide text-white/50">Checklist progress</p>
-            <p className="mt-1 text-2xl font-semibold text-white">{checklistProgress.percent}%</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{progress.percent}%</p>
             <p className="mt-1 text-sm text-white/60">
-              {checklistProgress.total ? `${checklistProgress.completed}/${checklistProgress.total} completed` : "Loading…"}
+              {progress.total ? `${progress.completed}/${progress.total} completed` : "Loading…"}
             </p>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-black/20 p-4 md:col-span-2">
             <p className="text-xs uppercase tracking-wide text-white/50">Recommended flow</p>
             <p className="mt-1 text-sm text-white/70">
-              Start with the checklist, then open official forms and resources. You can revisit any phase at any time —
-              your progress is saved locally.
+              Start with the checklist, then use the official forms and resources below. You can revisit any phase at any
+              time — your progress stays saved locally.
             </p>
 
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -168,15 +156,15 @@ export default function Phase2Page() {
                 title={
                   phase2Complete
                     ? "Continue to Phase 3"
-                    : "You can continue now, but completing the checklist first will make Phase 3 more effective."
+                    : "You can continue now, but finishing the legal checklist first is strongly recommended."
                 }
               >
-                {phase2Complete ? "Continue to Phase 3 →" : "Continue to Phase 3 →"}
+                Continue to Phase 3 →
               </a>
 
               {!phase2Complete && (
                 <span className="text-xs text-white/50">
-                  Recommended: finish Phase 2 first for the strongest brand and website output.
+                  Recommended: complete Phase 2 first for the strongest branding and website output.
                 </span>
               )}
             </div>
@@ -202,17 +190,9 @@ export default function Phase2Page() {
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
             <h2 className="text-xl font-semibold">Recommended business structure</h2>
             <p className="mt-2 text-white/70">{legalSetup.recommendedStructure}</p>
-            <p className="mt-2 text-sm text-white/60">
-              This is educational guidance, not legal advice. Always verify requirements with official sources for your
-              state and industry.
-            </p>
           </div>
 
-          <LegalChecklist
-            checklist={legalSetup.checklist || []}
-            storageKey={LEGAL_PROGRESS_KEY}
-            onProgress={setChecklistProgress}
-          />
+          <LegalChecklist checklist={legalSetup.checklist || []} storageKey={LEGAL_PROGRESS_KEY} onProgress={setProgress} />
 
           <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
             <h2 className="text-xl font-semibold">Templates & resources</h2>
@@ -224,12 +204,7 @@ export default function Phase2Page() {
               {templateLinks.map((t, idx) => (
                 <li key={`${t.name}-${idx}`}>
                   {t.link ? (
-                    <a
-                      href={t.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-300 hover:underline"
-                    >
+                    <a href={t.link} target="_blank" rel="noopener noreferrer" className="text-blue-300 hover:underline">
                       {t.name}
                     </a>
                   ) : (
