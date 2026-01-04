@@ -1,5 +1,5 @@
 // components/LegalChecklist.tsx
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 interface ChecklistItem {
   step: string;
@@ -8,10 +8,60 @@ interface ChecklistItem {
 
 interface Props {
   checklist: ChecklistItem[];
+  /**
+   * Optional localStorage key. If provided, checklist completion is saved and restored.
+   * Tip: pass the SAME key as LegalFormsBoard to keep the user’s “done” state unified.
+   */
+  storageKey?: string;
 }
 
-export const LegalChecklist: React.FC<Props> = ({ checklist }) => {
-  if (!checklist || checklist.length === 0) {
+function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
+function safeParseArray(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export const LegalChecklist: React.FC<Props> = ({ checklist, storageKey }) => {
+  const [done, setDone] = useState<Set<string>>(new Set());
+
+  // Load saved "done" set
+  useEffect(() => {
+    if (!storageKey) return;
+    if (typeof window === "undefined") return;
+    const arr = safeParseArray(window.localStorage.getItem(storageKey));
+    setDone(new Set(arr));
+  }, [storageKey]);
+
+  // Persist "done" set
+  useEffect(() => {
+    if (!storageKey) return;
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(storageKey, JSON.stringify(Array.from(done)));
+  }, [done, storageKey]);
+
+  const normalized = useMemo(() => {
+    return (checklist || [])
+      .filter((c) => c && typeof c.step === "string")
+      .map((c) => {
+        const id = `check:${slugify(c.step)}`;
+        const isDone = done.has(id) || !!c.completed;
+        return { ...c, id, completed: isDone };
+      });
+  }, [checklist, done]);
+
+  if (!normalized || normalized.length === 0) {
     return (
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-white/60">
         No legal checklist steps generated yet.
@@ -19,9 +69,18 @@ export const LegalChecklist: React.FC<Props> = ({ checklist }) => {
     );
   }
 
-  const completedCount = checklist.filter((c) => c.completed).length;
-  const total = checklist.length;
-  const percent = Math.round((completedCount / total) * 100);
+  const completedCount = normalized.filter((c) => c.completed).length;
+  const total = normalized.length;
+  const percent = total ? Math.round((completedCount / total) * 100) : 0;
+
+  function toggle(id: string) {
+    setDone((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   return (
     <section className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
@@ -31,7 +90,7 @@ export const LegalChecklist: React.FC<Props> = ({ checklist }) => {
             AI-Generated Legal Checklist
           </h2>
           <p className="mt-1 text-sm text-white/60">
-            Suggested steps based on your business idea and location.
+            Click items to mark them done. Progress is saved on this device.
           </p>
         </div>
 
@@ -49,30 +108,40 @@ export const LegalChecklist: React.FC<Props> = ({ checklist }) => {
       </div>
 
       <ul className="mt-6 space-y-3">
-        {checklist.map((item, idx) => (
-          <li
-            key={idx}
-            className={`flex items-start gap-3 rounded-xl border p-4 transition ${
-              item.completed
-                ? "border-emerald-500/30 bg-emerald-500/10"
-                : "border-white/10 bg-white/5"
-            }`}
-          >
-            <div
-              className={`mt-1 h-4 w-4 flex-shrink-0 rounded border ${
+        {normalized.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => toggle(item.id)}
+              className={[
+                "w-full text-left flex items-start gap-3 rounded-xl border p-4 transition",
                 item.completed
-                  ? "border-emerald-400/60 bg-emerald-400/40"
-                  : "border-white/30 bg-transparent"
-              }`}
-            />
-
-            <span
-              className={`text-sm leading-snug ${
-                item.completed ? "line-through text-white/60" : "text-white/80"
-              }`}
+                  ? "border-emerald-500/30 bg-emerald-500/10"
+                  : "border-white/10 bg-white/5 hover:border-white/20",
+              ].join(" ")}
             >
-              {item.step}
-            </span>
+              <div
+                className={[
+                  "mt-1 h-4 w-4 flex-shrink-0 rounded border grid place-items-center",
+                  item.completed
+                    ? "border-emerald-400/60 bg-emerald-400/30"
+                    : "border-white/30 bg-transparent",
+                ].join(" ")}
+              >
+                {item.completed ? (
+                  <span className="text-[10px] font-bold text-emerald-100">✓</span>
+                ) : null}
+              </div>
+
+              <span
+                className={[
+                  "text-sm leading-snug",
+                  item.completed ? "line-through text-white/60" : "text-white/80",
+                ].join(" ")}
+              >
+                {item.step}
+              </span>
+            </button>
           </li>
         ))}
       </ul>

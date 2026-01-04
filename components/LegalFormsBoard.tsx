@@ -1,137 +1,266 @@
 // components/LegalFormsBoard.tsx
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-export type LegalBoardItem = {
+type FormLink = {
   id: string;
   title: string;
-  description?: string;
-  when?: string;
-  linkLabel?: string;
-  linkUrl?: string;
-  completed?: boolean;
+  description: string;
+  url: string;
 };
 
-export type LegalBoardColumn = {
+type Column = {
   id: string;
   title: string;
-  subtitle?: string;
-  items: LegalBoardItem[];
+  items: FormLink[];
 };
 
 type Props = {
-  columns?: LegalBoardColumn[]; // ✅ optional now
-  onToggleComplete?: (itemId: string) => void;
+  storageKey: string;
+  businessType?: string;
 };
 
-export default function LegalFormsBoard({ columns = [], onToggleComplete }: Props) {
-  const hasColumns = Array.isArray(columns) && columns.length > 0;
+function safeParseSet(raw: string | null): Set<string> {
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return new Set(parsed.filter((x) => typeof x === "string"));
+    return new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function makeId(prefix: string, title: string) {
+  return `${prefix}:${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+}
+
+/**
+ * USA-only starter set.
+ * We’re not “auto-detecting state forms” yet — we give high-signal official starting points
+ * and a checklist workflow that feels real and usable.
+ */
+function getUSAColumns(businessType?: string): Column[] {
+  const type = (businessType || "Business").toLowerCase();
+
+  const fundamentals: FormLink[] = [
+    {
+      id: makeId("fundamentals", "Choose business name / availability"),
+      title: "Check business name availability (state)",
+      description: "Find your state's business registry search and confirm the name is available.",
+      url: "https://www.sba.gov/business-guide/launch-your-business/choose-your-business-name",
+    },
+    {
+      id: makeId("fundamentals", "Get EIN"),
+      title: "Get an EIN (IRS)",
+      description: "Free EIN application from the IRS (used for taxes, banking, payroll).",
+      url: "https://www.irs.gov/businesses/small-businesses-self-employed/apply-for-an-employer-identification-number-ein-online",
+    },
+    {
+      id: makeId("fundamentals", "Open business bank account"),
+      title: "Open a business bank account",
+      description: "Most banks require EIN + formation docs (LLC/Corp) and an operating agreement.",
+      url: "https://www.sba.gov/business-guide/launch-your-business/open-business-bank-account",
+    },
+  ];
+
+  const formation: FormLink[] = [
+    {
+      id: makeId("formation", "Form your entity with your state"),
+      title: "Form your entity with your state (LLC/Corp filing)",
+      description:
+        "File Articles of Organization (LLC) or Articles of Incorporation (Corp). This is state-specific.",
+      url: "https://www.sba.gov/business-guide/launch-your-business/register-your-business",
+    },
+    {
+      id: makeId("formation", "Operating agreement / bylaws"),
+      title: type.includes("llc") ? "Create an Operating Agreement" : "Create bylaws / organizational docs",
+      description:
+        "Internal governance docs. Some banks ask for it; it also keeps things clean and professional.",
+      url: "https://www.sba.gov/business-guide/launch-your-business/choose-business-structure",
+    },
+    {
+      id: makeId("formation", "Business licenses and permits"),
+      title: "Check licenses & permits (federal/state/local)",
+      description:
+        "Depending on your industry and location, you may need permits or professional licensing.",
+      url: "https://www.sba.gov/business-guide/launch-your-business/apply-licenses-permits",
+    },
+  ];
+
+  const taxAndOps: FormLink[] = [
+    {
+      id: makeId("tax", "Register for state taxes"),
+      title: "Register for state taxes",
+      description: "Sales tax, payroll tax, and other state registrations (varies by state).",
+      url: "https://www.sba.gov/business-guide/manage-your-business/pay-taxes",
+    },
+    {
+      id: makeId("tax", "Understand federal taxes"),
+      title: "Understand federal taxes (SBA)",
+      description: "Learn what tax filings apply based on your business structure.",
+      url: "https://www.sba.gov/business-guide/manage-your-business/pay-taxes",
+    },
+    {
+      id: makeId("ops", "Basic contracts"),
+      title: "Set up basic contracts (client/service agreement)",
+      description: "Have a simple contract template ready before taking money from clients.",
+      url: "https://www.sba.gov/business-guide/manage-your-business/prepare-your-business-contracts",
+    },
+  ];
+
+  return [
+    { id: "col-1", title: "Start Here", items: fundamentals },
+    { id: "col-2", title: "Formation", items: formation },
+    { id: "col-3", title: "Taxes + Ops", items: taxAndOps },
+  ];
+}
+
+export default function LegalFormsBoard({ storageKey, businessType }: Props) {
+  const [done, setDone] = useState<Set<string>>(new Set());
+
+  // Load done
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setDone(safeParseSet(window.localStorage.getItem(storageKey)));
+  }, [storageKey]);
+
+  // Persist done
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(storageKey, JSON.stringify(Array.from(done)));
+  }, [done, storageKey]);
+
+  const columns = useMemo(() => getUSAColumns(businessType), [businessType]);
+
+  function toggle(id: string) {
+    setDone((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function openAndMark(item: FormLink) {
+    // Mark immediately; link opens in new tab
+    toggle(item.id);
+    window.open(item.url, "_blank", "noopener,noreferrer");
+  }
+
+  const total = columns.reduce((acc, c) => acc + c.items.length, 0);
+  const completed = Array.from(done).length;
+  const pct = total ? Math.round((completed / total) * 100) : 0;
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
-      <div className="flex items-center justify-between gap-3">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Legal Forms & Links</h2>
+          <h2 className="text-xl font-semibold">Legal Forms & Official Links</h2>
           <p className="mt-1 text-sm text-white/60">
-            A step-by-step checklist with official links. Your progress is saved on this device.
+            USA starter workflow. Click a card to open the official page and mark it done.
           </p>
+          {businessType ? (
+            <p className="mt-1 text-xs text-white/50">
+              Tailored to: <span className="text-white/70">{businessType}</span>
+            </p>
+          ) : null}
         </div>
 
-        <div className="text-xs text-white/50 hidden sm:block">
-          Tip: Shift + mousewheel scrolls horizontally
+        <div className="w-full sm:w-[320px]">
+          <div className="flex items-center justify-between text-xs text-white/60">
+            <span>Progress</span>
+            <span>
+              {Math.min(completed, total)}/{total} ({pct}%)
+            </span>
+          </div>
+          <div className="mt-2 h-2 w-full rounded-full bg-white/10">
+            <div
+              className="h-2 rounded-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
       </div>
 
-      {!hasColumns ? (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-6 text-sm text-white/70">
-          No legal steps loaded yet. (This usually means Phase 2 hasn’t provided board data.)
-        </div>
-      ) : (
-        <div className="mt-4 overflow-x-auto pb-3">
-          <div className="flex gap-4 min-w-max">
-            {columns.map((col) => (
-              <div
-                key={col.id}
-                className="w-[280px] sm:w-[320px] shrink-0 rounded-2xl border border-white/10 bg-white/5 p-3"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="text-sm font-semibold text-white/90">{col.title}</div>
-                    {col.subtitle ? (
-                      <div className="mt-1 text-xs text-white/50">{col.subtitle}</div>
-                    ) : null}
-                  </div>
-                  <div className="text-xs text-white/40">
-                    {col.items?.length ?? 0} {(col.items?.length ?? 0) === 1 ? "item" : "items"}
-                  </div>
-                </div>
+      {/* Horizontal board */}
+      <div className="mt-5 overflow-x-auto pb-3">
+        <div className="flex gap-4 min-w-max">
+          {columns.map((col) => (
+            <div
+              key={col.id}
+              className="w-[280px] sm:w-[340px] shrink-0 rounded-2xl border border-white/10 bg-black/20 p-4"
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white/90">{col.title}</h3>
+                <span className="text-xs text-white/50">
+                  {col.items.filter((i) => done.has(i.id)).length}/{col.items.length}
+                </span>
+              </div>
 
-                <div className="mt-3 space-y-3">
-                  {(col.items ?? []).map((item) => {
-                    const done = !!item.completed;
-                    return (
-                      <div
-                        key={item.id}
-                        className={`rounded-xl border p-3 transition ${
-                          done
-                            ? "border-emerald-500/25 bg-emerald-500/10"
-                            : "border-white/10 bg-black/10"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <button
-                            type="button"
-                            onClick={() => onToggleComplete?.(item.id)}
-                            className={`mt-1 h-5 w-5 shrink-0 rounded border transition ${
-                              done
-                                ? "border-emerald-400/60 bg-emerald-400/30"
-                                : "border-white/30 bg-transparent hover:bg-white/10"
-                            }`}
-                            aria-label={done ? "Mark incomplete" : "Mark complete"}
-                          />
-                          <div className="min-w-0">
-                            <div
-                              className={`text-sm font-medium ${
-                                done ? "text-white/60 line-through" : "text-white/90"
-                              }`}
+              <div className="space-y-3">
+                {col.items.map((item) => {
+                  const isDone = done.has(item.id);
+                  return (
+                    <div
+                      key={item.id}
+                      className={[
+                        "rounded-xl border p-3 transition",
+                        isDone
+                          ? "border-emerald-400/30 bg-emerald-500/10"
+                          : "border-white/10 bg-white/5 hover:border-white/20",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={[
+                                "inline-flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-bold",
+                                isDone
+                                  ? "border-emerald-400/40 text-emerald-200 bg-emerald-500/10"
+                                  : "border-white/15 text-white/60 bg-white/5",
+                              ].join(" ")}
                             >
+                              {isDone ? "✓" : "•"}
+                            </span>
+                            <p className="text-sm font-semibold text-white/90 truncate">
                               {item.title}
-                            </div>
-
-                            {item.description ? (
-                              <div className="mt-1 text-xs text-white/55">{item.description}</div>
-                            ) : null}
-
-                            {item.when ? (
-                              <div className="mt-2 text-[11px] text-white/45">
-                                <span className="font-semibold text-white/55">When:</span>{" "}
-                                {item.when}
-                              </div>
-                            ) : null}
-
-                            {item.linkUrl ? (
-                              <div className="mt-3">
-                                <a
-                                  href={item.linkUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
-                                >
-                                  {item.linkLabel || "Open link"}
-                                  <span className="ml-2 text-white/40">↗</span>
-                                </a>
-                              </div>
-                            ) : null}
+                            </p>
                           </div>
+                          <p className="mt-1 text-xs text-white/60">
+                            {item.description}
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="mt-3 flex items-center justify-between">
+                        <button
+                          onClick={() => openAndMark(item)}
+                          className="rounded-lg bg-indigo-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-400"
+                        >
+                          Open link
+                        </button>
+
+                        <button
+                          onClick={() => toggle(item.id)}
+                          className={[
+                            "rounded-lg px-3 py-1.5 text-xs font-semibold transition",
+                            isDone
+                              ? "bg-emerald-500/20 text-emerald-200 hover:bg-emerald-500/30"
+                              : "bg-white/10 text-white/70 hover:bg-white/15",
+                          ].join(" ")}
+                        >
+                          {isDone ? "Mark not done" : "Mark done"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
-      )}
-    </section>
+      </div>
+    </div>
   );
 }

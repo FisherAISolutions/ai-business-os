@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
-import Layout from "../components/Layout";
 import { BrandingPreview } from "../components/BrandingPreview";
 import { LandingPagePreview } from "../components/LandingPagePreview";
-import { generateBranding } from "../lib/branding/ai";
+import { generateBranding } from "../lib/branding/ai"; // AI function similar to previous phases
 import { FounderProfile } from "../types/business";
+import { Layout } from "../components/Layout";
 
 const mockFounder: FounderProfile = {
   skills: ["Marketing", "Tech / Development"],
@@ -12,7 +12,7 @@ const mockFounder: FounderProfile = {
   timePerWeek: 15,
   riskTolerance: "medium",
   goals: "side_hustle",
-  location: "USA",
+  location: "USA"
 };
 
 const Phase3Page: React.FC = () => {
@@ -26,7 +26,7 @@ const Phase3Page: React.FC = () => {
         businessIdeaName: "AI-Enhanced Local SEO Agency",
         founderProfile: mockFounder,
         recommendedStructure: "LLC",
-        targetMarket: "Small business owners needing local SEO help",
+        targetMarket: "Small business owners needing local SEO help"
       });
       setBranding(aiBranding);
       setLoading(false);
