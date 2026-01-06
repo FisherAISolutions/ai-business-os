@@ -1,4 +1,4 @@
-import type { FounderProfile } from "../../types/business";
+import type { FounderProfile, ContinuousGrowthOutput } from "../../types/business";
 
 export type GrowthInput = {
   businessName: string;
@@ -12,31 +12,12 @@ export type GrowthInput = {
   };
 };
 
-export type GrowthOutput = {
-  summary: string;
-  northStarMetric: { name: string; definition: string; targetNext30Days: string };
-  funnel: {
-    awareness: string[];
-    activation: string[];
-    revenue: string[];
-    retention: string[];
-    referral: string[];
-  };
-  experiments: {
-    title: string;
-    hypothesis: string;
-    steps: string[];
-    successMetric: string;
-    expectedImpact: "low" | "medium" | "high";
-    effort: "low" | "medium" | "high";
-    priorityScore: number;
-  }[];
-  automation: {
-    quickWins: string[];
-    toolsStack: { tool: string; purpose: string }[];
-  };
-  risks: string[];
-  nextSteps: string[];
+export type GrowthOutput = ContinuousGrowthOutput & {
+  summary?: string;
+  experiments?: any[];
+  automation?: any;
+  risks?: string[];
+  nextSteps?: string[];
 };
 
 export async function generateContinuousGrowth(input: GrowthInput): Promise<GrowthOutput> {
@@ -51,5 +32,5 @@ export async function generateContinuousGrowth(input: GrowthInput): Promise<Grow
     throw new Error(data?.error || "Growth generation request failed.");
   }
 
-  return res.json();
+  return (await res.json()) as GrowthOutput;
 }

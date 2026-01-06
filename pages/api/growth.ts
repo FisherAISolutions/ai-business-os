@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import OpenAI from "openai";
-import type { FounderProfile } from "../../types/business";
+import type { FounderProfile, ContinuousGrowthOutput } from "../../types/business";
 
 type GrowthInput = {
   businessName: string;
@@ -14,189 +14,143 @@ type GrowthInput = {
   };
 };
 
-type GrowthOutput = {
-  summary: string;
-  northStarMetric: { name: string; definition: string; targetNext30Days: string };
-  funnel: {
-    awareness: string[];
-    activation: string[];
-    revenue: string[];
-    retention: string[];
-    referral: string[];
-  };
-  kpiDashboard: {
-    traffic: string;
-    conversionRate: number;
-    bounceRate: number;
-    emailOpenRate?: number;
-    socialEngagementRate?: number;
-  };
-  growthRecommendations: string[];
-  experiments: {
+type ExtendedGrowthOutput = ContinuousGrowthOutput & {
+  // These are optional extras your UI may render if present.
+  summary?: string;
+  experiments?: {
     title: string;
     steps: string[];
-    metricsToTrack: string[];
-    priorityScore: number;
+    metricsToTrack?: string[];
+    priorityScore?: number;
   }[];
-  automation: {
+  automation?: {
     quickWins: string[];
     toolsStack: { tool: string; purpose: string }[];
   };
-  updatedLandingPage: {
-    headline: string;
-    subheadline: string;
-    features: string[];
-    ctaText: string;
-  };
-  risks: string[];
-  nextSteps: string[];
+  risks?: string[];
+  nextSteps?: string[];
 };
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-function safeFallback(input: GrowthInput): GrowthOutput {
+function safeFallback(input: GrowthInput): ExtendedGrowthOutput {
   const biz = input.businessName || "Your Business";
+
   return {
-    summary: `Here’s a practical 30-day growth plan for ${biz}. This is a fallback response (AI returned invalid or incomplete JSON).`,
-    northStarMetric: {
-      name: "Qualified Leads / Week",
-      definition: "Number of leads that match your ICP and book a call / request a quote.",
-      targetNext30Days: "Increase by 25–50%",
-    },
-    funnel: {
-      awareness: [
-        "Publish 3–5 niche posts targeting high-intent keywords",
-        "Post 3 short-form clips/week repurposed from the posts",
-        "Engage daily in 2–3 communities where your buyers hang out",
+    growthRecommendations: [
+      "Pick one acquisition channel for the next 14 days and commit to a simple cadence.",
+      "Clarify the offer: who it’s for, the outcome, and the fastest path to value.",
+      "Add one primary conversion goal on your landing page and measure it weekly.",
+    ],
+    automatedEmails: [
+      {
+        subject: `Quick question about ${biz}`,
+        body:
+          `Hi {{name}},\n\nI noticed {{personalization}} and had a quick question:\n\nAre you currently looking to improve {{outcome}} over the next 30 days?\n\nIf yes, I can share a simple plan and a few quick wins.\n\nBest,\n{{your_name}}`,
+      },
+      {
+        subject: `A simple 3-step plan for {{outcome}}`,
+        body:
+          `Hi {{name}},\n\nHere’s a simple plan you can run this month:\n\n1) Tighten your offer & landing page CTA\n2) Run one focused acquisition channel\n3) Track conversion rate weekly and iterate\n\nIf you want, reply with your website and I’ll point out the 2 highest-impact improvements.\n\n— {{your_name}}`,
+      },
+    ],
+    automatedSocialPosts: [
+      `Most businesses don’t need more ideas — they need a tighter offer + a single acquisition channel executed consistently for 30 days.`,
+      `If your website isn’t converting, fix the headline, add proof, and make the CTA obvious. Everything else is secondary.`,
+      `A simple growth rule: pick one metric, one channel, one weekly habit. Do it for a month. Then expand.`,
+    ],
+    updatedLandingPage: {
+      headline: `A clearer path to results for ${biz}`,
+      subheadline:
+        "A focused offer, conversion-first landing page, and a simple growth loop — built for a solo founder.",
+      features: [
+        "Clear value proposition with outcome-driven messaging",
+        "One primary CTA with friction removed",
+        "Proof section (testimonials/case study) to increase trust",
+        "Simple tracking so you know what’s working",
       ],
-      activation: [
-        "Add a strong lead magnet to the landing page",
-        "Create a 2-step intake form to qualify leads",
-        "Offer a low-friction audit/assessment as the first offer",
-      ],
-      revenue: [
-        "Introduce 3 clear pricing tiers",
-        "Add proof (case studies, testimonials, before/after) above the fold",
-        "Add urgency with limited slots or time-bound offer",
-      ],
-      retention: [
-        "Weekly performance updates to customers",
-        "Monthly strategy calls for premium tier",
-        "Create a simple onboarding checklist and success milestones",
-      ],
-      referral: [
-        "Ask for referrals after first measurable result",
-        "Offer a referral discount or bonus",
-        "Create a simple referral link + email template",
-      ],
+      ctaText: "Get Started",
     },
     kpiDashboard: {
-      traffic: "Increase sessions by 20–40%",
-      conversionRate: 2.5,
-      bounceRate: 55,
-      emailOpenRate: 35,
-      socialEngagementRate: 4,
+      traffic: 500,
+      conversionRate: 3,
+      bounceRate: 45,
+      emailOpenRate: 25,
+      socialEngagementRate: 8,
     },
-    growthRecommendations: [
-      "Tighten your ICP and rewrite the headline to target 1 buyer type",
-      "Add a lead magnet + automated email follow-up",
-      "Run 2 weekly experiments: one conversion, one acquisition",
-      "Track 3 KPIs daily: sessions, leads, conversion rate",
-    ],
+
+    // Extras for your dashboard
+    summary: `Here’s a practical 30-day growth plan for ${biz}. (Fallback response — AI returned invalid JSON.)`,
     experiments: [
       {
-        title: "Landing Page Offer Test",
+        title: "Landing page headline + CTA test",
         steps: [
-          "Create 2 headline variants focused on different outcomes",
-          "Run traffic to both versions (even small budget)",
-          "Measure lead conversion rate after 300+ visits or 7 days",
+          "Write 2 alternative headlines focused on a specific outcome",
+          "Add 1 proof element (testimonial, metric, short case study)",
+          "Run for 7 days and compare conversion rate",
         ],
-        metricsToTrack: ["conversion rate", "bounce rate", "time on page"],
+        metricsToTrack: ["Conversion rate", "CTA click rate", "Bounce rate"],
         priorityScore: 85,
       },
       {
-        title: "Local Outreach Sprint",
+        title: "Outbound micro-campaign (50 leads)",
         steps: [
-          "Build a list of 50 local prospects",
-          "Send personalized outreach with a clear offer",
-          "Follow up 2 times over 7 days",
+          "Build a list of 50 ideal customers",
+          "Send a 2-email sequence with a tight offer",
+          "Track reply rate and booked calls",
         ],
-        metricsToTrack: ["reply rate", "booked calls", "close rate"],
-        priorityScore: 78,
+        metricsToTrack: ["Reply rate", "Booked calls"],
+        priorityScore: 70,
       },
     ],
     automation: {
       quickWins: [
-        "Auto-send intake form after inquiry",
-        "Auto-generate weekly KPI email",
-        "Auto-follow-up on abandoned lead form",
+        "Auto-tag leads by source",
+        "Auto-send an intake form immediately after inquiry",
+        "Auto-send a weekly KPI email summary to yourself",
       ],
       toolsStack: [
-        { tool: "Google Analytics", purpose: "Traffic + behavior tracking" },
-        { tool: "Notion/Airtable", purpose: "Pipeline + experiment tracking" },
-        { tool: "Zapier/Make", purpose: "Automations" },
+        { tool: "Google Analytics", purpose: "Traffic and behavior tracking" },
+        { tool: "Notion/Airtable", purpose: "Pipeline and experiment tracking" },
+        { tool: "Zapier/Make", purpose: "Simple automations" },
       ],
-    },
-    updatedLandingPage: {
-      headline: `Get More Customers for ${biz} — In 30 Days`,
-      subheadline: "A simple, proven growth system: attract the right traffic, convert more leads, and automate follow-up.",
-      features: [
-        "High-intent traffic strategy",
-        "Conversion-focused landing page",
-        "Automated follow-up sequences",
-        "Weekly KPI tracking + iteration",
-      ],
-      ctaText: "Get My Growth Plan",
     },
     risks: [
       "Trying too many channels at once",
       "Unclear offer positioning",
-      "No consistent content cadence",
+      "No consistent outreach/content cadence",
     ],
     nextSteps: [
-      "Pick 1 acquisition channel for the next 14 days",
-      "Finalize your offer tiers + pricing",
-      "Implement tracking for conversions and leads",
+      "Pick one acquisition channel for 14 days",
+      "Tighten the offer + landing page headline",
+      "Implement conversion tracking and review weekly",
     ],
   };
-}
-
-function isValidGrowthOutput(value: any): value is GrowthOutput {
-  if (!value || typeof value !== "object") return false;
-
-  const kpi = (value as any).kpiDashboard;
-  if (!kpi || typeof kpi !== "object") return false;
-  if (typeof kpi.traffic !== "string" || typeof kpi.conversionRate !== "number" || typeof kpi.bounceRate !== "number") {
-    return false;
-  }
-
-  if (!Array.isArray((value as any).growthRecommendations)) return false;
-  if (!Array.isArray((value as any).experiments)) return false;
-
-  const updatedLP = (value as any).updatedLandingPage;
-  if (!updatedLP || typeof updatedLP !== "object") return false;
-  if (typeof updatedLP.headline !== "string" || typeof updatedLP.subheadline !== "string" || typeof updatedLP.ctaText !== "string") {
-    return false;
-  }
-  if (!Array.isArray(updatedLP.features)) return false;
-
-  return true;
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-  try {
-    const input = (req.body || {}) as GrowthInput;
+  if (!process.env.OPENAI_API_KEY) {
+    return res.status(500).json({
+      error:
+        "OPENAI_API_KEY is missing on the server. Ensure it exists in .env and restart `npm run dev`.",
+    });
+  }
 
-    if (!input.businessName || !input.founderProfile) {
-      return res.status(400).json({ error: "Missing required fields." });
+  try {
+    const input = req.body as GrowthInput;
+
+    if (!input?.businessName || !input?.founderProfile) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields: businessName, founderProfile" });
     }
 
     const prompt = `
-You are a world-class growth strategist + analytics operator.
+You are a world-class growth strategist and lifecycle automation operator.
 
-Create a 30-day continuous growth & automation plan for this business.
+Create a practical 30-day growth + automation plan for this business.
 
 Business name: ${input.businessName}
 Founder profile: ${JSON.stringify(input.founderProfile, null, 2)}
@@ -204,37 +158,32 @@ Marketing data (may be empty): ${JSON.stringify(input.marketingData ?? {}, null,
 Traffic data (may be empty): ${JSON.stringify(input.trafficData ?? {}, null, 2)}
 
 Return STRICT JSON ONLY matching this schema:
+
 {
   "summary": "string",
-  "northStarMetric": { "name":"string", "definition":"string", "targetNext30Days":"string" },
-  "funnel": {
-    "awareness": ["string"],
-    "activation": ["string"],
-    "revenue": ["string"],
-    "retention": ["string"],
-    "referral": ["string"]
-  },
   "kpiDashboard": {
-    "traffic":"string",
+    "traffic": number,
     "conversionRate": number,
     "bounceRate": number,
-    "emailOpenRate": number,
-    "socialEngagementRate": number
+    "emailOpenRate"?: number,
+    "socialEngagementRate"?: number
   },
   "growthRecommendations": ["string"],
   "experiments": [
     {
-      "title":"string",
-      "steps":["string"],
-      "metricsToTrack":["string"],
-      "priorityScore": number
+      "title": "string",
+      "steps": ["string"],
+      "metricsToTrack"?: ["string"],
+      "priorityScore"?: number
     }
   ],
   "automation": {
     "quickWins": ["string"],
     "toolsStack": [{ "tool":"string", "purpose":"string" }]
   },
-  "updatedLandingPage": {
+  "automatedEmails": [{ "subject":"string", "body":"string" }],
+  "automatedSocialPosts": ["string"],
+  "updatedLandingPage"?: {
     "headline":"string",
     "subheadline":"string",
     "features":["string"],
@@ -246,9 +195,13 @@ Return STRICT JSON ONLY matching this schema:
 
 Rules:
 - Make it actionable for a solo founder.
-- 5–10 experiments, each with clear steps and metrics.
-- Priority score: 1–100 (higher = do first).
-- Keep it premium, specific, non-fluffy.
+- Keep it premium, specific, non-fluffy. No fake claims like “trusted by thousands”.
+- KPI values should be realistic numeric targets for the next 30 days.
+- Provide 5–8 growthRecommendations.
+- Provide 3–6 experiments with clear steps.
+- priorityScore is 1–100 (higher = do first).
+- automatedEmails should be ready-to-send templates with placeholders like {{name}}.
+- automatedSocialPosts should be short, useful, not cringe.
 `.trim();
 
     const completion = await openai.chat.completions.create({
@@ -258,16 +211,27 @@ Rules:
         { role: "user", content: prompt },
       ],
       temperature: 0.35,
+      max_tokens: 1400,
     });
 
-    const text = completion.choices[0]?.message?.content ?? "{}";
+    const text = completion.choices?.[0]?.message?.content?.trim() || "{}";
 
     try {
-      const parsed = JSON.parse(text) as GrowthOutput;
+      const parsed = JSON.parse(text) as ExtendedGrowthOutput;
 
-      // If the model returns valid JSON but the shape is wrong/missing required fields,
-      // fall back to a safe, complete response so the UI never crashes.
-      if (!isValidGrowthOutput(parsed)) {
+      // Basic safety checks so the UI never breaks.
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        !parsed.kpiDashboard ||
+        typeof parsed.kpiDashboard !== "object" ||
+        typeof (parsed as any).kpiDashboard.traffic !== "number" ||
+        typeof (parsed as any).kpiDashboard.conversionRate !== "number" ||
+        typeof (parsed as any).kpiDashboard.bounceRate !== "number" ||
+        !Array.isArray((parsed as any).growthRecommendations) ||
+        !Array.isArray((parsed as any).automatedEmails) ||
+        !Array.isArray((parsed as any).automatedSocialPosts)
+      ) {
         return res.status(200).json(safeFallback(input));
       }
 
