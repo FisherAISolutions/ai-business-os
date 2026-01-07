@@ -1,5 +1,6 @@
 // pages/index.tsx
 import Link from "next/link";
+import Image from "next/image";
 import React, { useEffect, useMemo, useState } from "react";
 
 const SELECTION_KEY = "ai-business-os:selected-idea";
@@ -18,6 +19,177 @@ type SelectionPreview = {
   founder?: { location?: string; budget?: number; timePerWeek?: number; experienceLevel?: string };
 };
 
+function HoloVisual() {
+  // Pure SVG “product visual” — no assets required.
+  return (
+    <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-6">
+      {/* faint scanline */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background:repeating-linear-gradient(180deg,rgba(255,255,255,0.10)_0px,rgba(255,255,255,0.10)_1px,transparent_4px,transparent_8px)]" />
+
+      {/* glow blob */}
+      <div
+        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full blur-3xl"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(34,197,94,0.10) 35%, rgba(0,0,0,0) 70%)",
+        }}
+      />
+
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          <div className="text-xs font-semibold tracking-widest text-white/50">SYSTEM PREVIEW</div>
+          <div className="text-[10px] text-white/40">Live • Local progress</div>
+        </div>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-white/55">PHASE STATUS</div>
+            <div className="mt-2 space-y-2">
+              {[
+                { t: "Idea Validation", c: "ok" },
+                { t: "Setup & Legal", c: "warn" },
+                { t: "Branding & Website", c: "idle" },
+                { t: "Marketing", c: "idle" },
+                { t: "Growth & Automation", c: "idle" },
+              ].map((x) => (
+                <div
+                  key={x.t}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2"
+                >
+                  <div className="text-xs text-white/70">{x.t}</div>
+                  <span
+                    className={[
+                      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                      x.c === "ok"
+                        ? "bg-emerald-500/10 text-emerald-200 border border-emerald-400/20"
+                        : "",
+                      x.c === "warn"
+                        ? "bg-amber-500/10 text-amber-200 border border-amber-400/20"
+                        : "",
+                      x.c === "idle" ? "bg-white/5 text-white/45 border border-white/10" : "",
+                    ].join(" ")}
+                  >
+                    <span
+                      className={[
+                        "h-1.5 w-1.5 rounded-full",
+                        x.c === "ok" ? "bg-emerald-400" : "",
+                        x.c === "warn" ? "bg-amber-400" : "",
+                        x.c === "idle" ? "bg-white/30" : "",
+                      ].join(" ")}
+                    />
+                    {x.c === "ok" ? "Done" : x.c === "warn" ? "Next" : "Locked"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="text-xs text-white/55">FORGE CORE</div>
+
+            <div className="mt-3 relative grid place-items-center rounded-2xl border border-white/10 bg-black/10 p-4 overflow-hidden">
+              {/* animated aura */}
+              <div className="pointer-events-none absolute inset-0 opacity-[0.9] animate-[holoPulse_6s_ease-in-out_infinite]">
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    background:
+                      "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.35) 0%, rgba(249,115,22,0.18) 35%, rgba(0,0,0,0) 70%)",
+                  }}
+                />
+              </div>
+
+              {/* SVG visual */}
+              <svg viewBox="0 0 420 240" className="relative h-[180px] w-full">
+                <defs>
+                  <linearGradient id="g1" x1="0" x2="1" y1="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(99,102,241,0.85)" />
+                    <stop offset="55%" stopColor="rgba(34,197,94,0.55)" />
+                    <stop offset="100%" stopColor="rgba(249,115,22,0.55)" />
+                  </linearGradient>
+                  <radialGradient id="g2" cx="50%" cy="45%" r="70%">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.85)" />
+                    <stop offset="35%" stopColor="rgba(99,102,241,0.55)" />
+                    <stop offset="70%" stopColor="rgba(249,115,22,0.18)" />
+                    <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+                  </radialGradient>
+                  <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+                    <feGaussianBlur stdDeviation="6" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                {/* orbit rings */}
+                <g opacity="0.9" filter="url(#glow)">
+                  <ellipse cx="210" cy="120" rx="150" ry="62" fill="none" stroke="url(#g1)" strokeWidth="2" />
+                  <ellipse cx="210" cy="120" rx="110" ry="44" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+                  <ellipse cx="210" cy="120" rx="75" ry="28" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                </g>
+
+                {/* core */}
+                <circle cx="210" cy="120" r="46" fill="url(#g2)" />
+                <circle cx="210" cy="120" r="22" fill="rgba(255,255,255,0.22)" />
+
+                {/* nodes */}
+                {[
+                  { x: 70, y: 120 },
+                  { x: 140, y: 70 },
+                  { x: 280, y: 70 },
+                  { x: 350, y: 120 },
+                  { x: 280, y: 170 },
+                  { x: 140, y: 170 },
+                ].map((p, i) => (
+                  <g key={i} filter="url(#glow)">
+                    <circle cx={p.x} cy={p.y} r="7" fill="rgba(99,102,241,0.55)" />
+                    <circle cx={p.x} cy={p.y} r="3" fill="rgba(255,255,255,0.75)" />
+                    <line x1={p.x} y1={p.y} x2={210} y2={120} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+                  </g>
+                ))}
+
+                {/* subtle waveform */}
+                <path
+                  d="M 20 210 C 80 180, 140 240, 200 210 C 260 180, 320 240, 400 210"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.14)"
+                  strokeWidth="2"
+                />
+              </svg>
+
+              <div className="mt-2 text-xs text-white/55 text-center">
+                A guided system that turns decisions into a launch-ready plan.
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                { k: "Outputs", v: "Copy + ship" },
+                { k: "Progress", v: "Saved" },
+                { k: "Flow", v: "Phase-based" },
+              ].map((x) => (
+                <div key={x.k} className="rounded-xl border border-white/10 bg-black/10 p-3">
+                  <div className="text-[10px] text-white/45">{x.k}</div>
+                  <div className="mt-1 text-xs font-semibold text-white/80">{x.v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="text-xs text-white/55">WHAT MAKES IT DIFFERENT</div>
+          <div className="mt-2 text-sm text-white/75 leading-relaxed">
+            Business Forge AI isn’t a chat prompt — it’s an organized workflow. Each phase creates
+            tangible assets: legal checklists, brand + landing page copy, marketing kits, and growth plans.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [selection, setSelection] = useState<SelectionPreview | null>(null);
 
@@ -27,41 +199,60 @@ export default function HomePage() {
     setSelection(data);
   }, []);
 
-  const businessName = useMemo(() => {
-    const name = String(selection?.idea?.name || "").trim();
-    return name;
-  }, [selection]);
-
+  const businessName = useMemo(() => String(selection?.idea?.name || "").trim(), [selection]);
   const location = useMemo(() => String(selection?.founder?.location || "").trim(), [selection]);
 
   const primaryCta = useMemo(() => {
-    // If user already has an idea selected, continuing to Phase 2 makes sense.
-    return businessName ? { href: "/phase2", label: "Continue your build" } : { href: "/phase1", label: "Start Phase 1" };
+    return businessName
+      ? { href: "/phase2", label: "Continue your build" }
+      : { href: "/phase1", label: "Start Phase 1" };
   }, [businessName]);
 
   return (
     <div className="max-w-6xl mx-auto space-y-10">
-      {/* HERO */}
+      {/* TOP BANNER (FULL IMAGE, NO CROP) */}
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur">
+        {/* Aspect ratio tuned for wide banners; shows full image */}
+        <div className="relative w-full aspect-[3/1]">
+          <Image
+            src="/hero/forge-hero.jpg"
+            alt="Business Forge AI hero banner"
+            fill
+            priority
+            className="object-contain"
+            sizes="(max-width: 1024px) 100vw, 1100px"
+          />
+
+          {/* Soft vignette + readability */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-black/10" />
+          <div className="absolute inset-0 [box-shadow:inset_0_0_120px_rgba(0,0,0,0.55)]" />
+
+          {/* Optional caption chip */}
+          <div className="absolute left-6 top-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/35 px-3 py-1 text-xs font-semibold text-white/75 backdrop-blur">
+            <span className="h-2 w-2 rounded-full bg-emerald-400/80" />
+            Business Forge AI • businessforgeai.com
+          </div>
+        </div>
+      </section>
+
+      {/* HERO (your existing section, pushed down) */}
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur md:p-12">
-        {/* Decorative background */}
+        {/* Decorative background: aurora + embers + grid */}
         <div className="pointer-events-none absolute inset-0">
-          {/* Cool glow */}
           <div
-            className="absolute -top-40 left-1/2 h-[420px] w-[980px] -translate-x-1/2 rounded-full blur-3xl"
+            className="absolute -top-40 left-1/2 h-[480px] w-[1100px] -translate-x-1/2 rounded-full blur-3xl opacity-90 animate-[holoDrift_10s_ease-in-out_infinite]"
             style={{
               background:
-                "radial-gradient(circle, rgba(99,102,241,0.30) 0%, rgba(0,0,0,0) 62%)",
+                "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.32) 0%, rgba(34,197,94,0.10) 32%, rgba(0,0,0,0) 70%)",
             }}
           />
-          {/* Warm ember glow */}
           <div
-            className="absolute -bottom-48 left-1/2 h-[520px] w-[1100px] -translate-x-1/2 rounded-full blur-3xl"
+            className="absolute -bottom-56 left-1/2 h-[620px] w-[1200px] -translate-x-1/2 rounded-full blur-3xl opacity-90 animate-[holoDrift2_12s_ease-in-out_infinite]"
             style={{
               background:
-                "radial-gradient(circle, rgba(249,115,22,0.18) 0%, rgba(239,68,68,0.10) 35%, rgba(0,0,0,0) 68%)",
+                "radial-gradient(circle at 50% 60%, rgba(249,115,22,0.18) 0%, rgba(239,68,68,0.10) 35%, rgba(0,0,0,0) 75%)",
             }}
           />
-          {/* Subtle grid */}
           <div
             className="absolute inset-0 opacity-[0.08]"
             style={{
@@ -107,7 +298,6 @@ export default function HomePage() {
               <span className="text-xs text-white/50 sm:ml-2">Progress saves locally on your device.</span>
             </div>
 
-            {/* Current build preview */}
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <div className="text-xs text-white/50">Current business</div>
@@ -128,66 +318,46 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Right column: “Product preview” cards */}
-          <div className="grid gap-4">
-            <div className="rounded-3xl border border-white/10 bg-black/25 p-6">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-xs font-semibold tracking-widest text-white/50">WHAT YOU GET</div>
-                  <div className="mt-2 text-lg font-semibold text-white">A real, usable startup kit</div>
-                  <p className="mt-2 text-sm text-white/65">
-                    Every phase produces practical outputs you can copy, use, and refine.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                {[
-                  { title: "Validated idea + scoring", desc: "Clear pick with reasoning and viability signals." },
-                  { title: "Legal checklist + forms", desc: "Progress saved, links organized, guidance included." },
-                  { title: "Brand kit + landing page", desc: "Positioning, copy, sections, and exportable code." },
-                  { title: "Marketing starter kit", desc: "Emails, posts, ads, calendar, and what to track." },
-                  { title: "Growth plan + automation", desc: "KPIs, experiments, and automation suggestions." },
-                ].map((x) => (
-                  <div key={x.title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <div className="text-sm font-semibold text-white">{x.title}</div>
-                    <div className="mt-1 text-xs text-white/60">{x.desc}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-3xl border border-white/10 bg-black/25 p-6">
-              <div className="text-xs font-semibold tracking-widest text-white/50">PHASE NAVIGATION</div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                {[
-                  { href: "/phase1", label: "Phase 1", sub: "Validate" },
-                  { href: "/phase2", label: "Phase 2", sub: "Setup" },
-                  { href: "/phase3", label: "Phase 3", sub: "Brand" },
-                  { href: "/phase4", label: "Phase 4", sub: "Market" },
-                  { href: "/phase5", label: "Phase 5", sub: "Grow" },
-                ].map((x) => (
-                  <Link
-                    key={x.href}
-                    href={x.href}
-                    className="group rounded-2xl border border-white/10 bg-white/5 p-4 transition hover:border-white/20 hover:bg-white/10"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm font-semibold text-white">{x.label}</div>
-                      <div className="text-xs text-white/45">{x.sub}</div>
-                    </div>
-                    <div className="mt-3 text-xs font-semibold text-indigo-200 opacity-0 transition group-hover:opacity-100">
-                      Open →
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Visual column */}
+          <HoloVisual />
         </div>
       </section>
 
-      {/* TRUST / FOOTER STRIP */}
+      {/* PHASE LINKS */}
+      <section className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-semibold text-white md:text-3xl">Jump into a phase</h2>
+            <p className="mt-2 text-sm text-white/65">
+              You can revisit phases anytime — your sidebar keeps track of what’s completed.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          {[
+            { href: "/phase1", t: "Phase 1", d: "Idea validation" },
+            { href: "/phase2", t: "Phase 2", d: "Setup & legal" },
+            { href: "/phase3", t: "Phase 3", d: "Branding & website" },
+            { href: "/phase4", t: "Phase 4", d: "Marketing" },
+            { href: "/phase5", t: "Phase 5", d: "Growth" },
+          ].map((x) => (
+            <Link
+              key={x.href}
+              href={x.href}
+              className="group rounded-2xl border border-white/10 bg-black/15 p-5 transition hover:border-white/20 hover:bg-white/5"
+            >
+              <div className="text-sm font-semibold text-white">{x.t}</div>
+              <div className="mt-1 text-xs text-white/60">{x.d}</div>
+              <div className="mt-4 text-xs font-semibold text-indigo-200 opacity-0 transition group-hover:opacity-100">
+                Open →
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* TRUST STRIP */}
       <section className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
         <div className="grid gap-5 md:grid-cols-3">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
@@ -203,7 +373,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
-            <div className="text-sm font-semibold text-white">You can revisit anytime</div>
+            <div className="text-sm font-semibold text-white">Revisit anytime</div>
             <p className="mt-2 text-sm text-white/65">
               Jump between phases. Update inputs. Regenerate outputs when needed.
             </p>
@@ -219,6 +389,49 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Local keyframes (no global.css changes needed) */}
+      <style jsx>{`
+        @keyframes holoDrift {
+          0% {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 0.9;
+          }
+          50% {
+            transform: translate(-50%, 12px) scale(1.02);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 0.9;
+          }
+        }
+        @keyframes holoDrift2 {
+          0% {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 0.85;
+          }
+          50% {
+            transform: translate(-50%, -14px) scale(1.03);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, 0) scale(1);
+            opacity: 0.85;
+          }
+        }
+        @keyframes holoPulse {
+          0% {
+            opacity: 0.6;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.6;
+          }
+        }
+      `}</style>
     </div>
   );
 }
