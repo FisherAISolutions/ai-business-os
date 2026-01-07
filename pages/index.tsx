@@ -22,18 +22,41 @@ type SelectionPreview = {
 function HoloVisual() {
   // Pure SVG “product visual” — no assets required.
   return (
-    <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-black/20 p-6">
-      {/* faint scanline */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.12] [background:repeating-linear-gradient(180deg,rgba(255,255,255,0.10)_0px,rgba(255,255,255,0.10)_1px,transparent_4px,transparent_8px)]" />
+    <div className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+      {/* scanlines */}
+      <div className="pointer-events-none absolute inset-0 opacity-[0.10] [background:repeating-linear-gradient(180deg,rgba(255,255,255,0.10)_0px,rgba(255,255,255,0.10)_1px,transparent_4px,transparent_8px)]" />
 
-      {/* glow blob */}
+      {/* glass sheen */}
+      <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.10),transparent_45%)]" />
+
+      {/* soft aurora blobs */}
       <div
-        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full blur-3xl"
+        className="pointer-events-none absolute -top-24 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full blur-3xl opacity-90"
         style={{
           background:
-            "radial-gradient(circle, rgba(99,102,241,0.25) 0%, rgba(34,197,94,0.10) 35%, rgba(0,0,0,0) 70%)",
+            "radial-gradient(circle, rgba(99,102,241,0.26) 0%, rgba(34,197,94,0.10) 35%, rgba(0,0,0,0) 70%)",
         }}
       />
+      <div
+        className="pointer-events-none absolute -bottom-40 left-1/2 h-80 w-[640px] -translate-x-1/2 rounded-full blur-3xl opacity-80"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(249,115,22,0.18) 0%, rgba(239,68,68,0.10) 35%, rgba(0,0,0,0) 75%)",
+        }}
+      />
+
+      {/* rotating shimmer ring (Tailwind animate-spin only; no styled-jsx) */}
+      <div className="pointer-events-none absolute inset-0 opacity-60 [mask-image:linear-gradient(black,transparent)]">
+        <div className="absolute -inset-[2px] rounded-[26px] border border-white/10" />
+        <div
+          className="absolute -inset-[2px] rounded-[26px] animate-spin"
+          style={{
+            background:
+              "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.16) 70deg, transparent 140deg)",
+            filter: "blur(1px)",
+          }}
+        />
+      </div>
 
       <div className="relative">
         <div className="flex items-center justify-between">
@@ -42,7 +65,7 @@ function HoloVisual() {
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]">
             <div className="text-xs text-white/55">PHASE STATUS</div>
             <div className="mt-2 space-y-2">
               {[
@@ -54,7 +77,7 @@ function HoloVisual() {
               ].map((x) => (
                 <div
                   key={x.t}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/10 px-3 py-2 transition hover:border-white/20 hover:bg-white/5"
                 >
                   <div className="text-xs text-white/70">{x.t}</div>
                   <span
@@ -66,7 +89,9 @@ function HoloVisual() {
                       x.c === "warn"
                         ? "bg-amber-500/10 text-amber-200 border border-amber-400/20"
                         : "",
-                      x.c === "idle" ? "bg-white/5 text-white/45 border border-white/10" : "",
+                      x.c === "idle"
+                        ? "bg-white/5 text-white/45 border border-white/10"
+                        : "",
                     ].join(" ")}
                   >
                     <span
@@ -84,12 +109,12 @@ function HoloVisual() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]">
             <div className="text-xs text-white/55">FORGE CORE</div>
 
-            <div className="mt-3 relative grid place-items-center rounded-2xl border border-white/10 bg-black/10 p-4 overflow-hidden">
-              {/* animated aura */}
-              <div className="pointer-events-none absolute inset-0 opacity-[0.9] animate-[holoPulse_6s_ease-in-out_infinite]">
+            <div className="mt-3 relative grid place-items-center overflow-hidden rounded-2xl border border-white/10 bg-black/10 p-4">
+              {/* animated aura (Tailwind animate-pulse) */}
+              <div className="pointer-events-none absolute inset-0 opacity-[0.85] animate-pulse">
                 <div
                   className="absolute inset-0"
                   style={{
@@ -97,6 +122,21 @@ function HoloVisual() {
                       "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.35) 0%, rgba(249,115,22,0.18) 35%, rgba(0,0,0,0) 70%)",
                   }}
                 />
+              </div>
+
+              {/* small “embers” (no custom keyframes, subtle pulse) */}
+              <div className="pointer-events-none absolute inset-0 opacity-40">
+                {Array.from({ length: 16 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="absolute h-1 w-1 rounded-full bg-white/45 blur-[0.2px] animate-pulse"
+                    style={{
+                      left: `${(i * 37) % 100}%`,
+                      top: `${(i * 23) % 100}%`,
+                      animationDelay: `${(i % 6) * 0.35}s`,
+                    }}
+                  />
+                ))}
               </div>
 
               {/* SVG visual */}
@@ -125,8 +165,24 @@ function HoloVisual() {
                 {/* orbit rings */}
                 <g opacity="0.9" filter="url(#glow)">
                   <ellipse cx="210" cy="120" rx="150" ry="62" fill="none" stroke="url(#g1)" strokeWidth="2" />
-                  <ellipse cx="210" cy="120" rx="110" ry="44" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-                  <ellipse cx="210" cy="120" rx="75" ry="28" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
+                  <ellipse
+                    cx="210"
+                    cy="120"
+                    rx="110"
+                    ry="44"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.25)"
+                    strokeWidth="1"
+                  />
+                  <ellipse
+                    cx="210"
+                    cy="120"
+                    rx="75"
+                    ry="28"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.18)"
+                    strokeWidth="1"
+                  />
                 </g>
 
                 {/* core */}
@@ -145,7 +201,14 @@ function HoloVisual() {
                   <g key={i} filter="url(#glow)">
                     <circle cx={p.x} cy={p.y} r="7" fill="rgba(99,102,241,0.55)" />
                     <circle cx={p.x} cy={p.y} r="3" fill="rgba(255,255,255,0.75)" />
-                    <line x1={p.x} y1={p.y} x2={210} y2={120} stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+                    <line
+                      x1={p.x}
+                      y1={p.y}
+                      x2={210}
+                      y2={120}
+                      stroke="rgba(255,255,255,0.12)"
+                      strokeWidth="1"
+                    />
                   </g>
                 ))}
 
@@ -169,7 +232,10 @@ function HoloVisual() {
                 { k: "Progress", v: "Saved" },
                 { k: "Flow", v: "Phase-based" },
               ].map((x) => (
-                <div key={x.k} className="rounded-xl border border-white/10 bg-black/10 p-3">
+                <div
+                  key={x.k}
+                  className="rounded-xl border border-white/10 bg-black/10 p-3 shadow-[0_0_0_1px_rgba(255,255,255,0.03)_inset] transition hover:border-white/20 hover:bg-white/5"
+                >
                   <div className="text-[10px] text-white/45">{x.k}</div>
                   <div className="mt-1 text-xs font-semibold text-white/80">{x.v}</div>
                 </div>
@@ -178,11 +244,11 @@ function HoloVisual() {
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
           <div className="text-xs text-white/55">WHAT MAKES IT DIFFERENT</div>
           <div className="mt-2 text-sm text-white/75 leading-relaxed">
-            Business Forge AI isn’t a chat prompt — it’s an organized workflow. Each phase creates
-            tangible assets: legal checklists, brand + landing page copy, marketing kits, and growth plans.
+            Business Forge AI isn’t a chat prompt — it’s an organized workflow. Each phase creates tangible assets:
+            legal checklists, brand + landing page copy, marketing kits, and growth plans.
           </div>
         </div>
       </div>
@@ -203,9 +269,7 @@ export default function HomePage() {
   const location = useMemo(() => String(selection?.founder?.location || "").trim(), [selection]);
 
   const primaryCta = useMemo(() => {
-    return businessName
-      ? { href: "/phase2", label: "Continue your build" }
-      : { href: "/phase1", label: "Start Phase 1" };
+    return businessName ? { href: "/phase2", label: "Continue your build" } : { href: "/phase1", label: "Start Phase 1" };
   }, [businessName]);
 
   return (
@@ -235,24 +299,27 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* HERO (your existing section, pushed down) */}
+      {/* HERO */}
       <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur md:p-12">
-        {/* Decorative background: aurora + embers + grid */}
+        {/* Decorative background: aurora + forge glow + subtle grid */}
         <div className="pointer-events-none absolute inset-0">
           <div
-            className="absolute -top-40 left-1/2 h-[480px] w-[1100px] -translate-x-1/2 rounded-full blur-3xl opacity-90 animate-[holoDrift_10s_ease-in-out_infinite]"
+            className="absolute -top-40 left-1/2 h-[480px] w-[1100px] -translate-x-1/2 rounded-full blur-3xl opacity-90"
             style={{
               background:
-                "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.32) 0%, rgba(34,197,94,0.10) 32%, rgba(0,0,0,0) 70%)",
+                "radial-gradient(circle at 50% 40%, rgba(99,102,241,0.30) 0%, rgba(34,197,94,0.10) 32%, rgba(0,0,0,0) 70%)",
             }}
           />
           <div
-            className="absolute -bottom-56 left-1/2 h-[620px] w-[1200px] -translate-x-1/2 rounded-full blur-3xl opacity-90 animate-[holoDrift2_12s_ease-in-out_infinite]"
+            className="absolute -bottom-56 left-1/2 h-[620px] w-[1200px] -translate-x-1/2 rounded-full blur-3xl opacity-90"
             style={{
               background:
                 "radial-gradient(circle at 50% 60%, rgba(249,115,22,0.18) 0%, rgba(239,68,68,0.10) 35%, rgba(0,0,0,0) 75%)",
             }}
           />
+
+          <div className="absolute inset-0 opacity-70 [background:radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.10),transparent_45%)]" />
+
           <div
             className="absolute inset-0 opacity-[0.08]"
             style={{
@@ -262,6 +329,19 @@ export default function HomePage() {
               maskImage: "radial-gradient(circle at 50% 35%, black 0%, transparent 70%)",
             }}
           />
+
+          {/* faint rotating sheen ring */}
+          <div className="absolute inset-0 rounded-3xl opacity-50">
+            <div className="absolute -inset-[2px] rounded-[26px] border border-white/10" />
+            <div
+              className="absolute -inset-[2px] rounded-[26px] animate-spin"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, transparent 0deg, rgba(255,255,255,0.14) 75deg, transparent 150deg)",
+                filter: "blur(1px)",
+              }}
+            />
+          </div>
         </div>
 
         <div className="relative grid gap-10 lg:grid-cols-2 lg:items-center">
@@ -283,14 +363,16 @@ export default function HomePage() {
             <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Link
                 href={primaryCta.href}
-                className="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500"
+                className="group relative inline-flex items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold text-white"
               >
-                {primaryCta.label} →
+                <span className="absolute inset-0 rounded-xl bg-indigo-600/90 shadow-[0_0_0_1px_rgba(255,255,255,0.12)_inset,0_18px_40px_rgba(79,70,229,0.20)] transition group-hover:bg-indigo-500/95" />
+                <span className="absolute -inset-[2px] rounded-[14px] opacity-60 blur-md transition group-hover:opacity-90 [background:radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.55),transparent_60%)]" />
+                <span className="relative">{primaryCta.label} →</span>
               </Link>
 
               <Link
                 href="/phase1"
-                className="inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white/90 hover:bg-white/10"
+                className="relative inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:border-white/25"
               >
                 Explore Phase 1
               </Link>
@@ -299,33 +381,38 @@ export default function HomePage() {
             </div>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
                 <div className="text-xs text-white/50">Current business</div>
-                <div className="mt-1 text-sm font-semibold text-white">
-                  {businessName ? businessName : "Not selected yet"}
-                </div>
+                <div className="mt-1 text-sm font-semibold text-white">{businessName ? businessName : "Not selected yet"}</div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
                 <div className="text-xs text-white/50">Location</div>
                 <div className="mt-1 text-sm font-semibold text-white">{location || "—"}</div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
                 <div className="text-xs text-white/50">Workflow</div>
                 <div className="mt-1 text-sm font-semibold text-white">5 phases</div>
               </div>
             </div>
           </div>
 
-          {/* Visual column */}
           <HoloVisual />
         </div>
       </section>
 
       {/* PHASE LINKS */}
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_15%_0%,rgba(255,255,255,0.08),transparent_45%)]" />
+        <div
+          className="pointer-events-none absolute -top-24 right-0 h-64 w-64 rounded-full blur-3xl opacity-60"
+          style={{
+            background: "radial-gradient(circle, rgba(99,102,241,0.25), transparent 70%)",
+          }}
+        />
+
+        <div className="relative flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-white md:text-3xl">Jump into a phase</h2>
             <p className="mt-2 text-sm text-white/65">
@@ -334,22 +421,31 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="relative mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           {[
             { href: "/phase1", t: "Phase 1", d: "Idea validation" },
             { href: "/phase2", t: "Phase 2", d: "Setup & legal" },
             { href: "/phase3", t: "Phase 3", d: "Branding & website" },
             { href: "/phase4", t: "Phase 4", d: "Marketing" },
             { href: "/phase5", t: "Phase 5", d: "Growth" },
-          ].map((x) => (
+          ].map((x, idx) => (
             <Link
               key={x.href}
               href={x.href}
-              className="group rounded-2xl border border-white/10 bg-black/15 p-5 transition hover:border-white/20 hover:bg-white/5"
+              className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/15 p-5 transition hover:border-white/20 hover:bg-white/5"
             >
-              <div className="text-sm font-semibold text-white">{x.t}</div>
-              <div className="mt-1 text-xs text-white/60">{x.d}</div>
-              <div className="mt-4 text-xs font-semibold text-indigo-200 opacity-0 transition group-hover:opacity-100">
+              <div
+                className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full blur-2xl opacity-0 transition group-hover:opacity-90"
+                style={{
+                  background:
+                    idx % 2 === 0
+                      ? "radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%)"
+                      : "radial-gradient(circle, rgba(249,115,22,0.28), transparent 70%)",
+                }}
+              />
+              <div className="relative text-sm font-semibold text-white">{x.t}</div>
+              <div className="relative mt-1 text-xs text-white/60">{x.d}</div>
+              <div className="relative mt-4 text-xs font-semibold text-indigo-200 opacity-0 transition group-hover:opacity-100">
                 Open →
               </div>
             </Link>
@@ -358,21 +454,29 @@ export default function HomePage() {
       </section>
 
       {/* TRUST STRIP */}
-      <section className="rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
-        <div className="grid gap-5 md:grid-cols-3">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 backdrop-blur">
+        <div className="pointer-events-none absolute inset-0 opacity-70 [background:radial-gradient(circle_at_12%_0%,rgba(255,255,255,0.08),transparent_45%)]" />
+        <div
+          className="pointer-events-none absolute -bottom-24 left-10 h-72 w-72 rounded-full blur-3xl opacity-60"
+          style={{
+            background: "radial-gradient(circle, rgba(34,197,94,0.16), transparent 70%)",
+          }}
+        />
+
+        <div className="relative grid gap-5 md:grid-cols-3">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
             <div className="text-sm font-semibold text-white">Professional wording</div>
             <p className="mt-2 text-sm text-white/65">
               Outputs are written to feel investor-ready, customer-ready, and launch-ready.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
             <div className="text-sm font-semibold text-white">Clear, repeatable process</div>
             <p className="mt-2 text-sm text-white/65">
               A structured flow reduces overwhelm and keeps momentum high.
             </p>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-5 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset] transition hover:border-white/20 hover:bg-white/5">
             <div className="text-sm font-semibold text-white">Revisit anytime</div>
             <p className="mt-2 text-sm text-white/65">
               Jump between phases. Update inputs. Regenerate outputs when needed.
@@ -380,7 +484,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-col items-center justify-between gap-2 text-center text-xs text-white/45 md:flex-row md:text-left">
+        <div className="relative mt-8 flex flex-col items-center justify-between gap-2 text-center text-xs text-white/45 md:flex-row md:text-left">
           <div>© {new Date().getFullYear()} Business Forge AI</div>
           <div className="flex items-center gap-3">
             <span className="text-white/35">businessforgeai.com</span>
@@ -389,49 +493,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Local keyframes (no global.css changes needed) */}
-      <style jsx>{`
-        @keyframes holoDrift {
-          0% {
-            transform: translate(-50%, 0) scale(1);
-            opacity: 0.9;
-          }
-          50% {
-            transform: translate(-50%, 12px) scale(1.02);
-            opacity: 1;
-          }
-          100% {
-            transform: translate(-50%, 0) scale(1);
-            opacity: 0.9;
-          }
-        }
-        @keyframes holoDrift2 {
-          0% {
-            transform: translate(-50%, 0) scale(1);
-            opacity: 0.85;
-          }
-          50% {
-            transform: translate(-50%, -14px) scale(1.03);
-            opacity: 1;
-          }
-          100% {
-            transform: translate(-50%, 0) scale(1);
-            opacity: 0.85;
-          }
-        }
-        @keyframes holoPulse {
-          0% {
-            opacity: 0.6;
-          }
-          50% {
-            opacity: 1;
-          }
-          100% {
-            opacity: 0.6;
-          }
-        }
-      `}</style>
     </div>
   );
 }

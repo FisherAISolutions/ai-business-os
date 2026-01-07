@@ -2,6 +2,7 @@
 import type { FounderProfile } from "../../types/business";
 
 export type LandingTemplateId = "templateA" | "templateB" | "templateC";
+export type LandingTheme = "dark" | "light";
 
 export type LandingContent = {
   templateId: LandingTemplateId;
@@ -60,6 +61,9 @@ export async function generateLandingPage(input: {
   logoPrompt?: string;
 
   templateId: LandingTemplateId;
+
+  // new
+  theme?: LandingTheme;
 }): Promise<LandingContent> {
   const res = await fetch("/api/landing-page", {
     method: "POST",

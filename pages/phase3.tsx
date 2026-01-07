@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { BrandingPreview } from "../components/BrandingPreview";
 import { generateBranding } from "../lib/branding/ai";
-import { generateLandingPage, LandingContent, LandingTemplateId } from "../lib/branding/landing";
+import { generateLandingPage, LandingContent, LandingTemplateId, LandingTheme } from "../lib/branding/landing";
 import LandingTemplateRenderer from "../components/LandingTemplateRenderer";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
@@ -42,7 +42,12 @@ function safeParse<T>(raw: string | null): T | null {
   }
 }
 
-function buildPageCode(templateId: LandingTemplateId, content: LandingContent, brand?: any) {
+function buildPageCode(
+  templateId: LandingTemplateId,
+  content: LandingContent,
+  brand: any,
+  theme: LandingTheme
+) {
   // A clean, copy/paste Next.js page (Pages Router)
   // This is intentionally self-contained so users can drop it into /pages/landing.tsx, etc.
   const safe = JSON.stringify(
@@ -50,34 +55,69 @@ function buildPageCode(templateId: LandingTemplateId, content: LandingContent, b
       templateId,
       content,
       brand: brand || {},
+      theme,
     },
     null,
     2
   );
 
+  // NOTE: No styled-jsx to avoid build issues.
   return `// pages/landing.tsx
 import React from "react";
 
 type LandingTemplateId = "templateA" | "templateB" | "templateC";
+type LandingTheme = "dark" | "light";
+type LandingContent = any;
 
-type LandingContent = ${"any"};
+type Brand = {
+  brandName?: string;
+  tagline?: string;
+  colors?: { primary?: string; secondary?: string; accent?: string };
+};
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-2xl font-bold text-white">{children}</h2>;
+function cx(...parts: Array<string | false | null | undefined>) {
+  return parts.filter(Boolean).join(" ");
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-xl border border-white/10 bg-white/5 p-5">{children}</div>;
+function SectionTitle({ children, theme }: { children: React.ReactNode; theme: LandingTheme }) {
+  return (
+    <h2 className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+      {children}
+    </h2>
+  );
+}
+
+function Card({
+  children,
+  theme,
+}: {
+  children: React.ReactNode;
+  theme: LandingTheme;
+}) {
+  return (
+    <div
+      className={cx(
+        "rounded-xl border p-5",
+        theme === "dark"
+          ? "border-white/10 bg-white/5"
+          : "border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.04)]"
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 function LandingTemplateRenderer({
   templateId,
   content,
   brand,
+  theme,
 }: {
   templateId: LandingTemplateId;
   content: any;
-  brand?: any;
+  brand?: Brand;
+  theme: LandingTheme;
 }) {
   const brandName = brand?.brandName || "";
   const tagline = brand?.tagline || "";
@@ -85,72 +125,114 @@ function LandingTemplateRenderer({
   const accent = brand?.colors?.accent || "#22C55E";
   const c = content;
 
+  const pageShell = cx(
+    "min-h-screen",
+    theme === "dark" ? "bg-gray-950 text-white" : "bg-slate-50 text-slate-900"
+  );
+
+  const frame = cx(
+    "mx-auto max-w-5xl px-6 py-10"
+  );
+
+  const panel = cx(
+    "rounded-2xl border p-6 backdrop-blur",
+    theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/70"
+  );
+
+  const subtleText = theme === "dark" ? "text-white/70" : "text-slate-600";
+  const faintText = theme === "dark" ? "text-white/50" : "text-slate-500";
+
+  const ghostBtn = cx(
+    "rounded-lg px-5 py-2 text-sm font-semibold border inline-flex items-center justify-center transition",
+    theme === "dark"
+      ? "text-white/90 border-white/15 bg-black/20 hover:bg-white/5"
+      : "text-slate-900 border-slate-200 bg-white hover:bg-slate-50"
+  );
+
+  const featureCard = cx(
+    "rounded-xl border p-4",
+    theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
+  );
+
+  const quoteCard = cx(
+    "rounded-lg border p-4",
+    theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"
+  );
+
+  const bottomPanel = cx(
+    "rounded-xl border p-5",
+    theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
+  );
+
   if (templateId === "templateB") {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="mx-auto max-w-5xl px-6 py-10">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+      <div className={pageShell}>
+        <div className={frame}>
+          <div className={panel}>
             <div className="flex flex-col gap-2">
-              {brandName ? <div className="text-sm text-white/60">{brandName}</div> : null}
-              <h1 className="text-4xl font-bold text-white">{c.hero.headline}</h1>
-              <p className="text-white/70">{c.hero.subheadline}</p>
+              {brandName ? <div className={cx("text-sm", faintText)}>{brandName}</div> : null}
+              <h1 className={cx("text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                {c.hero.headline}
+              </h1>
+              <p className={subtleText}>{c.hero.subheadline}</p>
 
               <div className="mt-4 flex flex-wrap gap-3">
                 <a
                   href="#contact"
-                  className="rounded-lg px-5 py-2 text-sm font-semibold text-white inline-flex"
+                  className="rounded-lg px-5 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
                   style={{ backgroundColor: primary }}
                 >
                   {c.hero.primaryCta}
                 </a>
-                <a
-                  href="#learn"
-                  className="rounded-lg px-5 py-2 text-sm font-semibold text-white/90 border border-white/15 bg-black/20 hover:bg-white/5 inline-flex"
-                >
+                <a href="#learn" className={ghostBtn}>
                   {c.hero.secondaryCta}
                 </a>
               </div>
 
-              <div className="mt-3 text-xs text-white/50">{c.hero.trustLine}</div>
-              {tagline ? <div className="mt-2 text-sm text-white/50 italic">{tagline}</div> : null}
+              <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
+              {tagline ? <div className={cx("mt-2 text-sm italic", faintText)}>{tagline}</div> : null}
             </div>
 
             <div id="learn" className="mt-8 grid gap-5 md:grid-cols-2">
-              <Card>
-                <SectionTitle>{c.problem.title}</SectionTitle>
-                <ul className="mt-3 list-disc pl-6 text-white/70 space-y-2">
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.problem.title}</SectionTitle>
+                <ul className={cx("mt-3 list-disc pl-6 space-y-2", subtleText)}>
                   {c.problem.bullets.map((b: string, idx: number) => (
                     <li key={idx}>{b}</li>
                   ))}
                 </ul>
               </Card>
 
-              <Card>
-                <SectionTitle>{c.solution.title}</SectionTitle>
-                <p className="mt-3 text-white/70">{c.solution.paragraph}</p>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.solution.title}</SectionTitle>
+                <p className={cx("mt-3", subtleText)}>{c.solution.paragraph}</p>
               </Card>
             </div>
 
             <div className="mt-8">
-              <SectionTitle>{c.features.title}</SectionTitle>
+              <SectionTitle theme={theme}>{c.features.title}</SectionTitle>
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 {c.features.items.map((it: any, idx: number) => (
-                  <div key={idx} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                    <div className="font-semibold text-white">{it.title}</div>
-                    <div className="mt-2 text-sm text-white/70">{it.description}</div>
+                  <div key={idx} className={featureCard}>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                      {it.title}
+                    </div>
+                    <div className={cx("mt-2 text-sm", subtleText)}>{it.description}</div>
                   </div>
                 ))}
               </div>
             </div>
 
             <div className="mt-8 grid gap-5 md:grid-cols-2">
-              <Card>
-                <SectionTitle>{c.socialProof.title}</SectionTitle>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.socialProof.title}</SectionTitle>
                 <div className="mt-4 space-y-3">
                   {c.socialProof.testimonials.map((t: any, idx: number) => (
-                    <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                      <div className="text-sm text-white/80">&ldquo;{t.quote}&rdquo;</div>
-                      <div className="mt-2 text-xs text-white/50">
+                    <div key={idx} className={quoteCard}>
+                      <div className={cx("text-sm", theme === "dark" ? "text-white/85" : "text-slate-800")}>
+                        &ldquo;{t.quote}&rdquo;
+                      </div>
+                      <div className={cx("mt-2 text-xs", faintText)}>
                         — {t.name}, {t.role}
                       </div>
                     </div>
@@ -158,25 +240,29 @@ function LandingTemplateRenderer({
                 </div>
               </Card>
 
-              <Card>
-                <SectionTitle>{c.faq.title}</SectionTitle>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.faq.title}</SectionTitle>
                 <div className="mt-4 space-y-3">
                   {c.faq.items.map((f: any, idx: number) => (
                     <div key={idx}>
-                      <div className="font-semibold text-white">{f.q}</div>
-                      <div className="mt-1 text-sm text-white/70">{f.a}</div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                        {f.q}
+                      </div>
+                      <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                     </div>
                   ))}
                 </div>
               </Card>
             </div>
 
-            <div id="contact" className="mt-8 rounded-xl border border-white/10 bg-black/20 p-5">
-              <div className="text-2xl font-bold text-white">{c.finalCta.title}</div>
-              <div className="mt-2 text-white/70">{c.finalCta.paragraph}</div>
+            <div id="contact" className={cx("mt-8", bottomPanel)}>
+              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                {c.finalCta.title}
+              </div>
+              <div className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</div>
               <a
                 href="#"
-                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white"
+                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
                 style={{ backgroundColor: accent }}
               >
                 {c.finalCta.cta}
@@ -190,53 +276,56 @@ function LandingTemplateRenderer({
 
   if (templateId === "templateC") {
     return (
-      <div className="min-h-screen bg-gray-950 text-white">
-        <div className="mx-auto max-w-5xl px-6 py-10">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-            <div className="rounded-xl border border-white/10 bg-black/20 p-6">
-              <div className="text-xs uppercase tracking-wide text-white/50">Offer</div>
-              <h1 className="mt-2 text-4xl font-bold text-white">{c.hero.headline}</h1>
-              <p className="mt-2 text-white/70">{c.hero.subheadline}</p>
+      <div className={pageShell}>
+        <div className={frame}>
+          <div className={panel}>
+            <div className={cx("rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
+              <div className={cx("text-xs uppercase tracking-wide", faintText)}>Offer</div>
+              <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                {c.hero.headline}
+              </h1>
+              <p className={cx("mt-2", subtleText)}>{c.hero.subheadline}</p>
 
               <div className="mt-5 flex flex-wrap gap-3">
                 <a
                   href="#contact"
-                  className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex"
+                  className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
                   style={{ backgroundColor: accent }}
                 >
                   {c.hero.primaryCta}
                 </a>
-                <a
-                  href="#learn"
-                  className="rounded-lg px-6 py-2 text-sm font-semibold text-white/90 border border-white/15 bg-black/20 hover:bg-white/5 inline-flex"
-                >
+                <a href="#learn" className={ghostBtn}>
                   {c.hero.secondaryCta}
                 </a>
               </div>
 
-              <div className="mt-3 text-xs text-white/50">{c.hero.trustLine}</div>
+              <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
             </div>
 
             <div id="learn" className="mt-8 grid gap-5 md:grid-cols-2">
-              <Card>
-                <SectionTitle>{c.features.title}</SectionTitle>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.features.title}</SectionTitle>
                 <div className="mt-4 space-y-3">
                   {c.features.items.map((it: any, idx: number) => (
-                    <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                      <div className="font-semibold text-white">{it.title}</div>
-                      <div className="mt-1 text-sm text-white/70">{it.description}</div>
+                    <div key={idx} className={quoteCard}>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                        {it.title}
+                      </div>
+                      <div className={cx("mt-1 text-sm", subtleText)}>{it.description}</div>
                     </div>
                   ))}
                 </div>
               </Card>
 
-              <Card>
-                <SectionTitle>{c.steps.title}</SectionTitle>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.steps.title}</SectionTitle>
                 <div className="mt-4 space-y-3">
                   {c.steps.items.map((s: any, idx: number) => (
-                    <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                      <div className="font-semibold text-white">{s.title}</div>
-                      <div className="mt-1 text-sm text-white/70">{s.description}</div>
+                    <div key={idx} className={quoteCard}>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                        {s.title}
+                      </div>
+                      <div className={cx("mt-1 text-sm", subtleText)}>{s.description}</div>
                     </div>
                   ))}
                 </div>
@@ -244,34 +333,38 @@ function LandingTemplateRenderer({
             </div>
 
             <div className="mt-8 grid gap-5 md:grid-cols-2">
-              <Card>
-                <SectionTitle>{c.problem.title}</SectionTitle>
-                <ul className="mt-3 list-disc pl-6 text-white/70 space-y-2">
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.problem.title}</SectionTitle>
+                <ul className={cx("mt-3 list-disc pl-6 space-y-2", subtleText)}>
                   {c.problem.bullets.map((b: string, idx: number) => (
                     <li key={idx}>{b}</li>
                   ))}
                 </ul>
               </Card>
 
-              <Card>
-                <SectionTitle>{c.faq.title}</SectionTitle>
+              <Card theme={theme}>
+                <SectionTitle theme={theme}>{c.faq.title}</SectionTitle>
                 <div className="mt-4 space-y-3">
                   {c.faq.items.map((f: any, idx: number) => (
                     <div key={idx}>
-                      <div className="font-semibold text-white">{f.q}</div>
-                      <div className="mt-1 text-sm text-white/70">{f.a}</div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                        {f.q}
+                      </div>
+                      <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                     </div>
                   ))}
                 </div>
               </Card>
             </div>
 
-            <div id="contact" className="mt-8 rounded-xl border border-white/10 bg-black/20 p-6">
-              <div className="text-2xl font-bold text-white">{c.finalCta.title}</div>
-              <p className="mt-2 text-white/70">{c.finalCta.paragraph}</p>
+            <div id="contact" className={cx("mt-8 rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
+              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                {c.finalCta.title}
+              </div>
+              <p className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</p>
               <a
                 href="#"
-                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white"
+                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
                 style={{ backgroundColor: primary }}
               >
                 {c.finalCta.cta}
@@ -285,72 +378,80 @@ function LandingTemplateRenderer({
 
   // templateA
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
-      <div className="mx-auto max-w-5xl px-6 py-10">
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-          {brandName ? <div className="text-sm text-white/60">{brandName}</div> : null}
-          <h1 className="mt-2 text-4xl font-bold text-white">{c.hero.headline}</h1>
-          <p className="mt-2 text-white/70">{c.hero.subheadline}</p>
+    <div className={pageShell}>
+      <div className={frame}>
+        <div className={panel}>
+          {brandName ? <div className={cx("text-sm", faintText)}>{brandName}</div> : null}
+          <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+            {c.hero.headline}
+          </h1>
+          <p className={cx("mt-2", subtleText)}>{c.hero.subheadline}</p>
 
           <div className="mt-5 flex flex-wrap gap-3">
             <a
               href="#contact"
-              className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex"
+              className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
               style={{ backgroundColor: primary }}
             >
               {c.hero.primaryCta}
             </a>
-            <a
-              href="#learn"
-              className="rounded-lg px-6 py-2 text-sm font-semibold text-white/90 border border-white/15 bg-black/20 hover:bg-white/5 inline-flex"
-            >
+            <a href="#learn" className={ghostBtn}>
               {c.hero.secondaryCta}
             </a>
           </div>
 
-          <div className="mt-3 text-xs text-white/50">{c.hero.trustLine}</div>
+          <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
+          {tagline ? <div className={cx("mt-2 text-sm italic", faintText)}>{tagline}</div> : null}
 
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {c.features.items.map((it: any, idx: number) => (
-              <div key={idx} className="rounded-xl border border-white/10 bg-black/20 p-4">
-                <div className="font-semibold text-white">{it.title}</div>
-                <div className="mt-2 text-sm text-white/70">{it.description}</div>
+              <div key={idx} className={featureCard}>
+                <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                  {it.title}
+                </div>
+                <div className={cx("mt-2 text-sm", subtleText)}>{it.description}</div>
               </div>
             ))}
           </div>
 
           <div id="learn" className="mt-8 grid gap-5 md:grid-cols-2">
-            <Card>
-              <SectionTitle>{c.steps.title}</SectionTitle>
+            <Card theme={theme}>
+              <SectionTitle theme={theme}>{c.steps.title}</SectionTitle>
               <div className="mt-4 space-y-3">
                 {c.steps.items.map((s: any, idx: number) => (
-                  <div key={idx} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                    <div className="font-semibold text-white">{s.title}</div>
-                    <div className="mt-1 text-sm text-white/70">{s.description}</div>
+                  <div key={idx} className={quoteCard}>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                      {s.title}
+                    </div>
+                    <div className={cx("mt-1 text-sm", subtleText)}>{s.description}</div>
                   </div>
                 ))}
               </div>
             </Card>
 
-            <Card>
-              <SectionTitle>{c.faq.title}</SectionTitle>
+            <Card theme={theme}>
+              <SectionTitle theme={theme}>{c.faq.title}</SectionTitle>
               <div className="mt-4 space-y-3">
                 {c.faq.items.map((f: any, idx: number) => (
                   <div key={idx}>
-                    <div className="font-semibold text-white">{f.q}</div>
-                    <div className="mt-1 text-sm text-white/70">{f.a}</div>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
+                      {f.q}
+                    </div>
+                    <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                   </div>
                 ))}
               </div>
             </Card>
           </div>
 
-          <div id="contact" className="mt-8 rounded-xl border border-white/10 bg-black/20 p-6">
-            <div className="text-2xl font-bold text-white">{c.finalCta.title}</div>
-            <p className="mt-2 text-white/70">{c.finalCta.paragraph}</p>
+          <div id="contact" className={cx("mt-8", bottomPanel)}>
+            <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
+              {c.finalCta.title}
+            </div>
+            <p className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</p>
             <a
               href="#"
-              className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white"
+              className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
               style={{ backgroundColor: accent }}
             >
               {c.finalCta.cta}
@@ -363,13 +464,19 @@ function LandingTemplateRenderer({
 }
 
 export default function LandingPage() {
-  const data = ${safe};
+  const data = ${safe} as {
+    templateId: LandingTemplateId;
+    content: LandingContent;
+    brand?: Brand;
+    theme: LandingTheme;
+  };
 
   return (
     <LandingTemplateRenderer
       templateId={data.templateId}
       content={data.content}
       brand={data.brand}
+      theme={data.theme || "dark"}
     />
   );
 }
@@ -383,6 +490,7 @@ const Phase3Page: React.FC = () => {
   const [landing, setLanding] = useState<LandingContent | null>(null);
 
   const [templateId, setTemplateId] = useState<LandingTemplateId>("templateA");
+  const [theme, setTheme] = useState<LandingTheme>("dark");
 
   const [loadingBrand, setLoadingBrand] = useState(false);
   const [loadingLanding, setLoadingLanding] = useState(false);
@@ -401,6 +509,9 @@ const Phase3Page: React.FC = () => {
         setTemplateId(saved.templateId as LandingTemplateId);
         setLanding(saved.landing as LandingContent);
         setExportCode(saved.exportCode || "");
+        if (saved.theme === "light" || saved.theme === "dark") {
+          setTheme(saved.theme as LandingTheme);
+        }
       }
     }
   }, []);
@@ -452,15 +563,21 @@ const Phase3Page: React.FC = () => {
         typography: branding.typography,
         logoPrompt: branding.logoPrompt,
         templateId,
+        theme,
       });
 
       setLanding(content);
 
-      const code = buildPageCode(templateId, content, {
-        brandName: branding.brandName,
-        tagline: branding.tagline,
-        colors: branding.colors,
-      });
+      const code = buildPageCode(
+        templateId,
+        content,
+        {
+          brandName: branding.brandName,
+          tagline: branding.tagline,
+          colors: branding.colors,
+        },
+        theme
+      );
 
       setExportCode(code);
 
@@ -469,6 +586,7 @@ const Phase3Page: React.FC = () => {
           PHASE3_STORAGE_KEY,
           JSON.stringify({
             templateId,
+            theme,
             landing: content,
             exportCode: code,
             savedAt: new Date().toISOString(),
@@ -493,6 +611,38 @@ const Phase3Page: React.FC = () => {
       // ignore
     }
   };
+
+  // keep export code in sync if user switches theme AFTER generation
+  useEffect(() => {
+    if (!landing) return;
+    const code = buildPageCode(
+      templateId,
+      landing,
+      {
+        brandName: branding?.brandName,
+        tagline: branding?.tagline,
+        colors: branding?.colors,
+      },
+      theme
+    );
+    setExportCode(code);
+
+    if (typeof window !== "undefined") {
+      const saved = safeParse<any>(window.localStorage.getItem(PHASE3_STORAGE_KEY)) || {};
+      window.localStorage.setItem(
+        PHASE3_STORAGE_KEY,
+        JSON.stringify({
+          ...saved,
+          templateId,
+          theme,
+          landing,
+          exportCode: code,
+          savedAt: new Date().toISOString(),
+        })
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme, templateId]);
 
   if (!selection) {
     return (
@@ -562,11 +712,37 @@ const Phase3Page: React.FC = () => {
           </button>
         </div>
 
+        {/* Theme selector */}
+        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm font-semibold text-white">Landing page theme</div>
+            <div className="text-xs text-white/60">This changes the preview styling and the exported code.</div>
+          </div>
+
+          <div className="inline-flex rounded-xl border border-white/10 bg-white/5 p-1">
+            {(["dark", "light"] as LandingTheme[]).map((t) => {
+              const active = theme === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTheme(t)}
+                  className={[
+                    "px-4 py-2 text-sm font-semibold rounded-lg transition",
+                    active ? "bg-indigo-500/20 text-indigo-200" : "text-white/70 hover:bg-white/10",
+                  ].join(" ")}
+                >
+                  {t === "dark" ? "Dark" : "Light"}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid gap-3 md:grid-cols-3">
           {(["templateA", "templateB", "templateC"] as LandingTemplateId[]).map((id) => {
             const active = templateId === id;
-            const label =
-              id === "templateA" ? "Clean SaaS" : id === "templateB" ? "Story-driven" : "Offer-focused";
+            const label = id === "templateA" ? "Clean SaaS" : id === "templateB" ? "Story-driven" : "Offer-focused";
             const desc =
               id === "templateA"
                 ? "Simple hero + feature grid + FAQ."
@@ -614,6 +790,7 @@ const Phase3Page: React.FC = () => {
           <LandingTemplateRenderer
             content={landing}
             templateId={templateId}
+            theme={theme}
             brand={{
               brandName: branding?.brandName,
               tagline: branding?.tagline,
@@ -625,9 +802,7 @@ const Phase3Page: React.FC = () => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-white">Export page code</div>
-                <div className="text-sm text-white/60">
-                  Copy/paste into your project as a real Next.js page (Pages Router).
-                </div>
+                <div className="text-sm text-white/60">Copy/paste into your project as a real Next.js page (Pages Router).</div>
               </div>
 
               <button

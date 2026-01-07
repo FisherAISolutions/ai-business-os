@@ -20,6 +20,9 @@ type Body = {
   logoPrompt?: string;
 
   templateId?: "templateA" | "templateB" | "templateC";
+
+  // new
+  theme?: "dark" | "light";
 };
 
 function safeJsonParse(text: string): any | null {
@@ -40,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const businessName = String(body.businessName || "").trim();
     const location = String(body.location || "").trim();
     const templateId = (body.templateId || "templateA") as "templateA" | "templateB" | "templateC";
+    const theme = (body.theme === "light" ? "light" : "dark") as "light" | "dark";
 
     if (!founder || !businessName || !location) {
       return res.status(400).json({ error: "Missing required fields." });
@@ -68,6 +72,10 @@ BUSINESS:
 - Brand name: ${brandName}
 - Location: ${location}
 - Tagline: ${tagline || "(none provided)"}
+
+VISUAL THEME PREFERENCE:
+- Theme: ${theme}
+Write copy that matches the ${theme} aesthetic (clean, modern, professional), but do NOT include CSS or code.
 
 BRAND STYLE (optional guidance):
 - Primary color: ${primary}
@@ -118,7 +126,8 @@ Return ONLY valid JSON with EXACTLY this shape:
     "title": string,
     "items": { "title": string, "description": string }[]
   },
-  "steps":nd 1", "Step 2", etc.
+  "steps": {
+    "title": string,
     "items": { "title": string, "description": string }[]
   },
   "socialProof": {
@@ -167,7 +176,7 @@ Rules:
     }
 
     // Minimal shape validation
-    if (!parsed.hero || !parsed.features || !parsed.faq || !parsed.finalCta) {
+    if (!parsed.hero || !parsed.features || !parsed.faq || !parsed.finalCta || !parsed.steps) {
       return res.status(500).json({
         error: "AI response missing required fields.",
         raw: parsed,
