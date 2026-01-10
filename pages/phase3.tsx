@@ -1,6 +1,7 @@
 // pages/phase3.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { BrandingPreview } from "../components/BrandingPreview";
 import { generateBranding } from "../lib/branding/ai";
 import { generateLandingPage, LandingContent, LandingTemplateId, LandingTheme } from "../lib/branding/landing";
@@ -483,7 +484,9 @@ export default function LandingPage() {
 `;
 }
 
-const Phase3Page: React.FC = () => {
+const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
+  const router = useRouter();
+
   const [selection, setSelection] = useState<SavedSelection | null>(null);
 
   const [branding, setBranding] = useState<any>(null);
@@ -498,6 +501,17 @@ const Phase3Page: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [exportCode, setExportCode] = useState<string>("");
+
+  // Auth gate (Phase 2–5 are paid; Phase 1 is free). Stripe comes next — for now we gate by login.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (session) return;
+
+    const redirectedFrom = encodeURIComponent(router.asPath || "/phase3");
+    if (router.pathname !== "/login") {
+      router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+    }
+  }, [session, router]);
 
   useEffect(() => {
     const sel = readSelection();

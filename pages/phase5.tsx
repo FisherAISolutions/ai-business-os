@@ -1,5 +1,6 @@
 // pages/phase5.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import Link from "next/link";
 import { GrowthDashboard } from "../components/GrowthDashboard";
 import { generateContinuousGrowth } from "../lib/growth/ai";
@@ -28,11 +29,24 @@ function readSelection(): SavedSelection | null {
   }
 }
 
-const Phase5Page: React.FC = () => {
+const Phase5Page: React.FC<{ session: any }> = ({ session }) => {
+  const router = useRouter();
+
   const [selection, setSelection] = useState<SavedSelection | null>(null);
   const [growthData, setGrowthData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auth gate (Phase 2–5 are paid; Phase 1 is free). Stripe comes next — for now we gate by login.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (session) return;
+
+    const redirectedFrom = encodeURIComponent(router.asPath || "/phase5");
+    if (router.pathname !== "/login") {
+      router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+    }
+  }, [session, router]);
 
   useEffect(() => {
     setSelection(readSelection());
