@@ -1,5 +1,6 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
+import { Analytics } from "@vercel/analytics/next";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 
@@ -13,6 +14,7 @@ export default function App({ Component, pageProps }: AppProps) {
           <Component {...pageProps} />
         </main>
       </div>
+      <Analytics />
     </div>
   );
 }
