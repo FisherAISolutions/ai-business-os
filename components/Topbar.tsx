@@ -1,13 +1,20 @@
 // components/Topbar.tsx
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { useAuth } from "../lib/auth/AuthContext";
+import { supabase } from "../lib/supabaseClient";
 
-export default function Topbar() {
+type Props = {
+  session?: any;
+};
+
+export default function Topbar({ session }: Props) {
   const router = useRouter();
-  const { user, signOut, loading } = useAuth();
+  const email = session?.user?.email;
 
-  const email = user?.email;
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
 
   return (
     <header className="bg-gray-700 p-4 flex justify-between items-center border-b border-white/10">
@@ -17,9 +24,7 @@ export default function Topbar() {
       </div>
 
       <div className="flex items-center gap-2">
-        {loading ? (
-          <span className="text-sm text-white/60">Loading…</span>
-        ) : user ? (
+        {session ? (
           <>
             <span className="hidden md:block text-sm text-gray-200">{email}</span>
 
