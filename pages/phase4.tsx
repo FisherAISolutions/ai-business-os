@@ -1,12 +1,10 @@
 // pages/phase4.tsx
 import React, { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
 import Link from "next/link";
 import { MarketingDashboard } from "../components/MarketingDashboard";
 import { generateMarketing } from "../lib/marketing/ai";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
-import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -16,6 +14,7 @@ type SavedSelection = {
 };
 
 const SELECTION_KEY = "ai-business-os:selected-idea";
+const BUSINESS_NAME_KEY = "ai-business-os:business-name";
 
 function readSelection(): SavedSelection | null {
   if (typeof window === "undefined") return null;
@@ -30,48 +29,39 @@ function readSelection(): SavedSelection | null {
   }
 }
 
-export default function Phase4Page() {
-  const router = useRouter();
-  const { user, subscription, loading } = useAuth();
+function readBusinessName(selection: SavedSelection | null) {
+  if (typeof window === "undefined") return selection?.idea?.name ?? "";
+  const saved = window.localStorage.getItem(BUSINESS_NAME_KEY);
+  if (saved && saved.trim()) return saved.trim();
+  return selection?.idea?.name ?? "";
+}
 
+const Phase4Page: React.FC = () => {
   const [selection, setSelection] = useState<SavedSelection | null>(null);
+  const [businessName, setBusinessName] = useState("");
   const [marketingData, setMarketingData] = useState<any>(null);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth + subscription gate (Phase 2–5)
   useEffect(() => {
-    if (loading) return;
-
-    // not signed in
-    if (!user) {
-      const redirectedFrom = encodeURIComponent(router.asPath || "/phase4");
-      router.replace(`/login?redirectedFrom=${redirectedFrom}`);
-      return;
-    }
-
-    // signed in but not subscribed
-    if (!subscription?.active) {
-      const from = encodeURIComponent(router.asPath || "/phase4");
-      router.replace(`/pricing?from=${from}`);
-      return;
-    }
-  }, [loading, user, subscription?.active, router]);
-
-  useEffect(() => {
-    setSelection(readSelection());
+    const sel = readSelection();
+    setSelection(sel);
+    setBusinessName(readBusinessName(sel));
   }, []);
 
-  const businessName = useMemo(() => selection?.idea?.name || "", [selection]);
+  const location = useMemo(() => selection?.founder?.location || "USA", [selection]);
 
   const handleGenerate = async () => {
     if (!selection) return;
-    setBusy(true);
+
+    const bn = businessName.trim() || selection.idea.name;
+
+    setLoading(true);
     setError(null);
     try {
       const data = await generateMarketing({
         founder: selection.founder,
-        businessName: selection.idea.name,
+        businessName: bn,
         location: selection.founder.location || "USA",
       });
       setMarketingData(data);
@@ -81,19 +71,9 @@ export default function Phase4Page() {
     } catch (e: any) {
       setError(e?.message || "Marketing generation failed.");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
-
-  // While auth is resolving, don't flash the page
-  if (loading || !user || !subscription?.active) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-4">
-        <h1 className="text-3xl font-bold">Phase 4 — Marketing</h1>
-        <p className="text-gray-300">Loading…</p>
-      </div>
-    );
-  }
 
   if (!selection) {
     return (
@@ -117,7 +97,8 @@ export default function Phase4Page() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Phase 4 — Marketing</h1>
         <p className="text-gray-300">
-          Business: <span className="font-semibold text-white">{businessName}</span>
+          Business: <span className="font-semibold text-white">{businessName || selection.idea.name}</span> • Location:{" "}
+          <span className="font-semibold text-white">{location}</span>
         </p>
       </div>
 
@@ -130,18 +111,14 @@ export default function Phase4Page() {
         </div>
         <button
           onClick={handleGenerate}
-          disabled={busy}
+          disabled={loading}
           className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
         >
-          {busy ? "Generating..." : "Generate Marketing"}
+          {loading ? "Generating..." : "Generate Marketing"}
         </button>
       </div>
 
-      {error && (
-        <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">
-          {error}
-        </div>
-      )}
+      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
 
       {marketingData && (
         <>
@@ -155,4 +132,6 @@ export default function Phase4Page() {
       )}
     </div>
   );
-}
+};
+
+export default Phase4Page;

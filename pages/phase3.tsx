@@ -1,7 +1,6 @@
 // pages/phase3.tsx
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import { BrandingPreview } from "../components/BrandingPreview";
 import { generateBranding } from "../lib/branding/ai";
 import {
@@ -13,7 +12,6 @@ import {
 import LandingTemplateRenderer from "../components/LandingTemplateRenderer";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
-import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -23,6 +21,7 @@ type SavedSelection = {
 };
 
 const SELECTION_KEY = "ai-business-os:selected-idea";
+const BUSINESS_NAME_KEY = "ai-business-os:business-name";
 
 // Phase 3 local persistence (per idea)
 const PHASE3_STORAGE_KEY = "ai-business-os:phase3:landing";
@@ -49,6 +48,13 @@ function safeParse<T>(raw: string | null): T | null {
   }
 }
 
+function readBusinessName(selection: SavedSelection | null) {
+  if (typeof window === "undefined") return selection?.idea?.name ?? "";
+  const saved = window.localStorage.getItem(BUSINESS_NAME_KEY);
+  if (saved && saved.trim()) return saved.trim();
+  return selection?.idea?.name ?? "";
+}
+
 function buildPageCode(
   templateId: LandingTemplateId,
   content: LandingContent,
@@ -56,12 +62,7 @@ function buildPageCode(
   theme: LandingTheme
 ) {
   const safe = JSON.stringify(
-    {
-      templateId,
-      content,
-      brand: brand || {},
-      theme,
-    },
+    { templateId, content, brand: brand || {}, theme },
     null,
     2
   );
@@ -123,17 +124,9 @@ function LandingTemplateRenderer({
   const accent = brand?.colors?.accent || "#22C55E";
   const c = content;
 
-  const pageShell = cx(
-    "min-h-screen",
-    theme === "dark" ? "bg-gray-950 text-white" : "bg-slate-50 text-slate-900"
-  );
-
+  const pageShell = cx("min-h-screen", theme === "dark" ? "bg-gray-950 text-white" : "bg-slate-50 text-slate-900");
   const frame = cx("mx-auto max-w-5xl px-6 py-10");
-
-  const panel = cx(
-    "rounded-2xl border p-6 backdrop-blur",
-    theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/70"
-  );
+  const panel = cx("rounded-2xl border p-6 backdrop-blur", theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white/70");
 
   const subtleText = theme === "dark" ? "text-white/70" : "text-slate-600";
   const faintText = theme === "dark" ? "text-white/50" : "text-slate-500";
@@ -145,20 +138,9 @@ function LandingTemplateRenderer({
       : "text-slate-900 border-slate-200 bg-white hover:bg-slate-50"
   );
 
-  const featureCard = cx(
-    "rounded-xl border p-4",
-    theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
-  );
-
-  const quoteCard = cx(
-    "rounded-lg border p-4",
-    theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"
-  );
-
-  const bottomPanel = cx(
-    "rounded-xl border p-5",
-    theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
-  );
+  const featureCard = cx("rounded-xl border p-4", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white");
+  const quoteCard = cx("rounded-lg border p-4", theme === "dark" ? "border-white/10 bg-white/5" : "border-slate-200 bg-white");
+  const bottomPanel = cx("rounded-xl border p-5", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white");
 
   if (templateId === "templateB") {
     return (
@@ -167,22 +149,14 @@ function LandingTemplateRenderer({
           <div className={panel}>
             <div className="flex flex-col gap-2">
               {brandName ? <div className={cx("text-sm", faintText)}>{brandName}</div> : null}
-              <h1 className={cx("text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                {c.hero.headline}
-              </h1>
+              <h1 className={cx("text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.hero.headline}</h1>
               <p className={subtleText}>{c.hero.subheadline}</p>
 
               <div className="mt-4 flex flex-wrap gap-3">
-                <a
-                  href="#contact"
-                  className="rounded-lg px-5 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
-                  style={{ backgroundColor: primary }}
-                >
+                <a href="#contact" className="rounded-lg px-5 py-2 text-sm font-semibold text-white inline-flex items-center justify-center" style={{ backgroundColor: primary }}>
                   {c.hero.primaryCta}
                 </a>
-                <a href="#learn" className={ghostBtn}>
-                  {c.hero.secondaryCta}
-                </a>
+                <a href="#learn" className={ghostBtn}>{c.hero.secondaryCta}</a>
               </div>
 
               <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
@@ -193,9 +167,7 @@ function LandingTemplateRenderer({
               <Card theme={theme}>
                 <SectionTitle theme={theme}>{c.problem.title}</SectionTitle>
                 <ul className={cx("mt-3 list-disc pl-6 space-y-2", subtleText)}>
-                  {c.problem.bullets.map((b: string, idx: number) => (
-                    <li key={idx}>{b}</li>
-                  ))}
+                  {c.problem.bullets.map((b: string, idx: number) => <li key={idx}>{b}</li>)}
                 </ul>
               </Card>
 
@@ -210,9 +182,7 @@ function LandingTemplateRenderer({
               <div className="mt-4 grid gap-4 md:grid-cols-3">
                 {c.features.items.map((it: any, idx: number) => (
                   <div key={idx} className={featureCard}>
-                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                      {it.title}
-                    </div>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{it.title}</div>
                     <div className={cx("mt-2 text-sm", subtleText)}>{it.description}</div>
                   </div>
                 ))}
@@ -225,12 +195,8 @@ function LandingTemplateRenderer({
                 <div className="mt-4 space-y-3">
                   {c.socialProof.testimonials.map((t: any, idx: number) => (
                     <div key={idx} className={quoteCard}>
-                      <div className={cx("text-sm", theme === "dark" ? "text-white/85" : "text-slate-800")}>
-                        &ldquo;{t.quote}&rdquo;
-                      </div>
-                      <div className={cx("mt-2 text-xs", faintText)}>
-                        — {t.name}, {t.role}
-                      </div>
+                      <div className={cx("text-sm", theme === "dark" ? "text-white/85" : "text-slate-800")}>&ldquo;{t.quote}&rdquo;</div>
+                      <div className={cx("mt-2 text-xs", faintText)}>— {t.name}, {t.role}</div>
                     </div>
                   ))}
                 </div>
@@ -241,9 +207,7 @@ function LandingTemplateRenderer({
                 <div className="mt-4 space-y-3">
                   {c.faq.items.map((f: any, idx: number) => (
                     <div key={idx}>
-                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                        {f.q}
-                      </div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{f.q}</div>
                       <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                     </div>
                   ))}
@@ -252,15 +216,9 @@ function LandingTemplateRenderer({
             </div>
 
             <div id="contact" className={cx("mt-8", bottomPanel)}>
-              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                {c.finalCta.title}
-              </div>
+              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.finalCta.title}</div>
               <div className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</div>
-              <a
-                href="#"
-                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
-                style={{ backgroundColor: accent }}
-              >
+              <a href="#" className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center" style={{ backgroundColor: accent }}>
                 {c.finalCta.cta}
               </a>
             </div>
@@ -275,29 +233,16 @@ function LandingTemplateRenderer({
       <div className={pageShell}>
         <div className={frame}>
           <div className={panel}>
-            <div
-              className={cx(
-                "rounded-xl border p-6",
-                theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
-              )}
-            >
+            <div className={cx("rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
               <div className={cx("text-xs uppercase tracking-wide", faintText)}>Offer</div>
-              <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                {c.hero.headline}
-              </h1>
+              <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.hero.headline}</h1>
               <p className={cx("mt-2", subtleText)}>{c.hero.subheadline}</p>
 
               <div className="mt-5 flex flex-wrap gap-3">
-                <a
-                  href="#contact"
-                  className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
-                  style={{ backgroundColor: accent }}
-                >
+                <a href="#contact" className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center" style={{ backgroundColor: accent }}>
                   {c.hero.primaryCta}
                 </a>
-                <a href="#learn" className={ghostBtn}>
-                  {c.hero.secondaryCta}
-                </a>
+                <a href="#learn" className={ghostBtn}>{c.hero.secondaryCta}</a>
               </div>
 
               <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
@@ -309,9 +254,7 @@ function LandingTemplateRenderer({
                 <div className="mt-4 space-y-3">
                   {c.features.items.map((it: any, idx: number) => (
                     <div key={idx} className={quoteCard}>
-                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                        {it.title}
-                      </div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{it.title}</div>
                       <div className={cx("mt-1 text-sm", subtleText)}>{it.description}</div>
                     </div>
                   ))}
@@ -323,9 +266,7 @@ function LandingTemplateRenderer({
                 <div className="mt-4 space-y-3">
                   {c.steps.items.map((s: any, idx: number) => (
                     <div key={idx} className={quoteCard}>
-                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                        {s.title}
-                      </div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{s.title}</div>
                       <div className={cx("mt-1 text-sm", subtleText)}>{s.description}</div>
                     </div>
                   ))}
@@ -337,9 +278,7 @@ function LandingTemplateRenderer({
               <Card theme={theme}>
                 <SectionTitle theme={theme}>{c.problem.title}</SectionTitle>
                 <ul className={cx("mt-3 list-disc pl-6 space-y-2", subtleText)}>
-                  {c.problem.bullets.map((b: string, idx: number) => (
-                    <li key={idx}>{b}</li>
-                  ))}
+                  {c.problem.bullets.map((b: string, idx: number) => <li key={idx}>{b}</li>)}
                 </ul>
               </Card>
 
@@ -348,9 +287,7 @@ function LandingTemplateRenderer({
                 <div className="mt-4 space-y-3">
                   {c.faq.items.map((f: any, idx: number) => (
                     <div key={idx}>
-                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                        {f.q}
-                      </div>
+                      <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{f.q}</div>
                       <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                     </div>
                   ))}
@@ -358,22 +295,10 @@ function LandingTemplateRenderer({
               </Card>
             </div>
 
-            <div
-              id="contact"
-              className={cx(
-                "mt-8 rounded-xl border p-6",
-                theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
-              )}
-            >
-              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                {c.finalCta.title}
-              </div>
+            <div id="contact" className={cx("mt-8 rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
+              <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.finalCta.title}</div>
               <p className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</p>
-              <a
-                href="#"
-                className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
-                style={{ backgroundColor: primary }}
-              >
+              <a href="#" className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center" style={{ backgroundColor: primary }}>
                 {c.finalCta.cta}
               </a>
             </div>
@@ -383,28 +308,19 @@ function LandingTemplateRenderer({
     );
   }
 
-  // templateA
   return (
     <div className={pageShell}>
       <div className={frame}>
         <div className={panel}>
           {brandName ? <div className={cx("text-sm", faintText)}>{brandName}</div> : null}
-          <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-            {c.hero.headline}
-          </h1>
+          <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.hero.headline}</h1>
           <p className={cx("mt-2", subtleText)}>{c.hero.subheadline}</p>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <a
-              href="#contact"
-              className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center"
-              style={{ backgroundColor: primary }}
-            >
+            <a href="#contact" className="rounded-lg px-6 py-2 text-sm font-semibold text-white inline-flex items-center justify-center" style={{ backgroundColor: primary }}>
               {c.hero.primaryCta}
             </a>
-            <a href="#learn" className={ghostBtn}>
-              {c.hero.secondaryCta}
-            </a>
+            <a href="#learn" className={ghostBtn}>{c.hero.secondaryCta}</a>
           </div>
 
           <div className={cx("mt-3 text-xs", faintText)}>{c.hero.trustLine}</div>
@@ -413,9 +329,7 @@ function LandingTemplateRenderer({
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {c.features.items.map((it: any, idx: number) => (
               <div key={idx} className={featureCard}>
-                <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                  {it.title}
-                </div>
+                <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{it.title}</div>
                 <div className={cx("mt-2 text-sm", subtleText)}>{it.description}</div>
               </div>
             ))}
@@ -427,9 +341,7 @@ function LandingTemplateRenderer({
               <div className="mt-4 space-y-3">
                 {c.steps.items.map((s: any, idx: number) => (
                   <div key={idx} className={quoteCard}>
-                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                      {s.title}
-                    </div>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{s.title}</div>
                     <div className={cx("mt-1 text-sm", subtleText)}>{s.description}</div>
                   </div>
                 ))}
@@ -441,9 +353,7 @@ function LandingTemplateRenderer({
               <div className="mt-4 space-y-3">
                 {c.faq.items.map((f: any, idx: number) => (
                   <div key={idx}>
-                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>
-                      {f.q}
-                    </div>
+                    <div className={cx("font-semibold", theme === "dark" ? "text-white" : "text-slate-900")}>{f.q}</div>
                     <div className={cx("mt-1 text-sm", subtleText)}>{f.a}</div>
                   </div>
                 ))}
@@ -452,15 +362,9 @@ function LandingTemplateRenderer({
           </div>
 
           <div id="contact" className={cx("mt-8", bottomPanel)}>
-            <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
-              {c.finalCta.title}
-            </div>
+            <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>{c.finalCta.title}</div>
             <p className={cx("mt-2", subtleText)}>{c.finalCta.paragraph}</p>
-            <a
-              href="#"
-              className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center"
-              style={{ backgroundColor: accent }}
-            >
+            <a href="#" className="mt-4 inline-flex rounded-lg px-6 py-2 text-sm font-semibold text-white items-center justify-center" style={{ backgroundColor: accent }}>
               {c.finalCta.cta}
             </a>
           </div>
@@ -470,7 +374,7 @@ function LandingTemplateRenderer({
   );
 }
 
-export default function LandingPageExport() {
+export default function LandingPage() {
   const data = ${safe} as {
     templateId: LandingTemplateId;
     content: LandingContent;
@@ -490,12 +394,10 @@ export default function LandingPageExport() {
 `;
 }
 
-export default function Phase3Page() {
-  const router = useRouter();
-  const { user, subscription, loading } = useAuth();
-
+const Phase3Page: React.FC = () => {
   const [selection, setSelection] = useState<SavedSelection | null>(null);
 
+  const [businessName, setBusinessName] = useState("");
   const [branding, setBranding] = useState<any>(null);
   const [landing, setLanding] = useState<LandingContent | null>(null);
 
@@ -508,26 +410,10 @@ export default function Phase3Page() {
   const [error, setError] = useState<string | null>(null);
   const [exportCode, setExportCode] = useState<string>("");
 
-  // Auth + subscription gate (Phase 2–5)
-  useEffect(() => {
-    if (loading) return;
-
-    if (!user) {
-      const redirectedFrom = encodeURIComponent(router.asPath || "/phase3");
-      router.replace(`/login?redirectedFrom=${redirectedFrom}`);
-      return;
-    }
-
-    if (!subscription?.active) {
-      const from = encodeURIComponent(router.asPath || "/phase3");
-      router.replace(`/pricing?from=${from}`);
-      return;
-    }
-  }, [loading, user, subscription?.active, router]);
-
   useEffect(() => {
     const sel = readSelection();
     setSelection(sel);
+    setBusinessName(readBusinessName(sel));
 
     if (typeof window !== "undefined") {
       const saved = safeParse<any>(window.localStorage.getItem(PHASE3_STORAGE_KEY));
@@ -535,24 +421,34 @@ export default function Phase3Page() {
         setTemplateId(saved.templateId as LandingTemplateId);
         setLanding(saved.landing as LandingContent);
         setExportCode(saved.exportCode || "");
-        if (saved.theme === "light" || saved.theme === "dark") {
-          setTheme(saved.theme as LandingTheme);
-        }
+        if (saved.theme === "light" || saved.theme === "dark") setTheme(saved.theme as LandingTheme);
       }
     }
   }, []);
 
-  const businessName = useMemo(() => selection?.idea?.name || "", [selection]);
+  // persist business name so phase4/5 can read too
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!businessName.trim()) return;
+    window.localStorage.setItem(BUSINESS_NAME_KEY, businessName.trim());
+  }, [businessName]);
+
   const location = useMemo(() => selection?.founder?.location || "USA", [selection]);
 
   const handleGenerateBranding = async () => {
     if (!selection) return;
+    const bn = businessName.trim();
+    if (!bn) {
+      setError("Please enter a business name first (Phase 2).");
+      return;
+    }
+
     setLoadingBrand(true);
     setError(null);
     try {
       const data = await generateBranding({
         founder: selection.founder,
-        businessName: selection.idea.name,
+        businessName: bn,
         location: selection.founder.location || "USA",
       });
       setBranding(data);
@@ -567,6 +463,13 @@ export default function Phase3Page() {
 
   const handleGenerateLanding = async () => {
     if (!selection) return;
+
+    const bn = businessName.trim();
+    if (!bn) {
+      setError("Please enter a business name first (Phase 2).");
+      return;
+    }
+
     if (!branding) {
       setError("Generate your brand kit first — it improves landing page quality.");
       return;
@@ -578,7 +481,7 @@ export default function Phase3Page() {
     try {
       const content = await generateLandingPage({
         founder: selection.founder,
-        businessName: selection.idea.name,
+        businessName: bn,
         location: selection.founder.location || "USA",
         brandName: branding.brandName,
         tagline: branding.tagline,
@@ -634,7 +537,7 @@ export default function Phase3Page() {
     }
   };
 
-  // keep export code in sync if user switches theme/template AFTER generation
+  // keep export code in sync if user switches theme AFTER generation
   useEffect(() => {
     if (!landing) return;
 
@@ -667,16 +570,6 @@ export default function Phase3Page() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme, templateId]);
 
-  // While auth is resolving, don't flash content
-  if (loading || !user || !subscription?.active) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-4">
-        <h1 className="text-3xl font-bold">Phase 3 — Branding & Website</h1>
-        <p className="text-gray-300">Loading…</p>
-      </div>
-    );
-  }
-
   if (!selection) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
@@ -699,16 +592,25 @@ export default function Phase3Page() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold">Phase 3 — Branding & Website</h1>
         <p className="text-gray-300">
-          Business: <span className="font-semibold text-white">{businessName}</span> • Location:{" "}
+          Business: <span className="font-semibold text-white">{businessName || selection.idea.name}</span> • Location:{" "}
           <span className="font-semibold text-white">{location}</span>
         </p>
+
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+          <div className="text-xs uppercase tracking-wide text-white/50">Business name</div>
+          <input
+            className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-white placeholder:text-white/40"
+            value={businessName}
+            onChange={(e) => setBusinessName(e.target.value)}
+            placeholder="Type your business name…"
+          />
+          <div className="mt-2 text-xs text-white/50">
+            This is pulled from Phase 2 and used for branding + landing generation.
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">
-          {error}
-        </div>
-      )}
+      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
 
       {/* Step 1 */}
       <div className="p-4 rounded-lg bg-gray-800 border border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -864,4 +766,6 @@ export default function Phase3Page() {
       )}
     </div>
   );
-}
+};
+
+export default Phase3Page;

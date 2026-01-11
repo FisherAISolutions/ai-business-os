@@ -2,21 +2,50 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PROTECTED_PHASES = ["/phase2", "/phase3", "/phase4", "/phase5"];
-const ALWAYS_ALLOWED = ["/", "/phase1", "/login", "/pricing", "/api", "/_next", "/favicon.ico"];
+// Phase 1 is free
+const FREE_ROUTES = ["/", "/phase1", "/login", "/pricing"];
 
-function isAllowed(pathname: string) {
-  return ALWAYS_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p));
+// Anything here should NEVER be blocked
+function isPublicRoute(pathname: string) {
+  // exact-match public pages
+  if (FREE_ROUTES.includes(pathname)) return true;
+
+  // allow next internals + assets
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/robots.txt") ||
+    pathname.startsWith("/sitemap.xml")
+  ) {
+    return true;
+  }
+
+  // allow API routes (they self-check auth)
+  if (pathname.startsWith("/api")) return true;
+
+  return false;
 }
 
-function isProtected(pathname: string) {
-  return PROTECTED_PHASES.some((p) => pathname === p || pathname.startsWith(p + "/")) || pathname.startsWith("/account");
+function isPaidPhase(pathname: string) {
+  return (
+    pathname === "/phase2" ||
+    pathname.startsWith("/phase2/") ||
+    pathname === "/phase3" ||
+    pathname.startsWith("/phase3/") ||
+    pathname === "/phase4" ||
+    pathname.startsWith("/phase4/") ||
+    pathname === "/phase5" ||
+    pathname.startsWith("/phase5/") ||
+    pathname === "/account" ||
+    pathname.startsWith("/account/")
+  );
 }
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
-  if (isAllowed(pathname)) return NextResponse.next();
+  // Allow public routes through
+  if (isPublicRoute(pathname)) return NextResponse.next();
 
   const res = NextResponse.next();
 
@@ -41,17 +70,16 @@ export async function middleware(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (isProtected(pathname) && !user) {
+  // Must be logged in for paid phases + account
+  if (isPaidPhase(pathname) && !user) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectedFrom", pathname + search);
     return NextResponse.redirect(url);
   }
 
-  // If it's a paid phase, require active/trialing subscription
-  const isPaidPhase = PROTECTED_PHASES.some((p) => pathname === p || pathname.startsWith(p + "/"));
-
-  if (isPaidPhase && user) {
+  // Must be subscribed for paid phases + account
+  if (isPaidPhase(pathname) && user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("subscription_status")

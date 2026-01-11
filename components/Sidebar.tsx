@@ -43,7 +43,11 @@ export default function Sidebar() {
             >
               <span>
                 {p.label}
-                {p.free && <span className="ml-2 text-xs bg-emerald-500/20 px-2 rounded">Free</span>}
+                {p.free && (
+                  <span className="ml-2 text-xs bg-emerald-500/20 px-2 rounded">
+                    Free
+                  </span>
+                )}
               </span>
 
               {locked && <span className="text-xs">🔒</span>}

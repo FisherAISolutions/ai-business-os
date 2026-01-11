@@ -1,7 +1,9 @@
 // pages/account.tsx
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
+import { firePurchaseOnce } from "../lib/roku";
 
 type SubscriptionState = {
   active: boolean;
@@ -10,6 +12,8 @@ type SubscriptionState = {
 };
 
 export default function AccountPage() {
+  const router = useRouter();
+
   const [session, setSession] = useState<any>(null);
   const [subscription, setSubscription] = useState<SubscriptionState>({
     active: false,
@@ -27,6 +31,16 @@ export default function AccountPage() {
       setSubscription({ active: false, status: null, currentPeriodEnd: null });
     }
   }
+
+  // ✅ Fire Roku PURCHASE after Stripe success redirect
+  useEffect(() => {
+    if (!router.isReady) return;
+
+    // Stripe success_url: /account?checkout=success
+    if (router.query.checkout === "success") {
+      firePurchaseOnce("roku_purchase_fired");
+    }
+  }, [router.isReady, router.query.checkout]);
 
   useEffect(() => {
     let mounted = true;
