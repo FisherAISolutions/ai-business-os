@@ -21,7 +21,9 @@ export default function Login() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      router.replace(redirectedFrom);
+
+      // IMPORTANT: hard navigation fixes the “stuck on login” issue on protected pages
+      window.location.href = redirectedFrom;
     } catch (e: any) {
       setMsg(e?.message ?? "Sign in failed");
     } finally {
@@ -36,10 +38,8 @@ export default function Login() {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
 
-      // If email confirmations are ON, user must confirm via email.
-      // If confirmations are OFF, session is created immediately.
       if (data.session) {
-        router.replace(redirectedFrom);
+        window.location.href = redirectedFrom;
       } else {
         setMsg("Check your email to confirm your account, then come back and sign in.");
         setMode("signin");
@@ -56,9 +56,7 @@ export default function Login() {
       <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
         <h1 className="text-2xl font-semibold">{mode === "signin" ? "Sign in" : "Create account"}</h1>
         <p className="mt-2 text-sm text-white/60">
-          {mode === "signin"
-            ? "Sign in with your email and password."
-            : "Create a new account with your email and password."}
+          {mode === "signin" ? "Sign in with your email and password." : "Create a new account with your email and password."}
         </p>
       </div>
 
@@ -106,19 +104,11 @@ export default function Login() {
 
         <div className="flex items-center justify-between text-sm text-white/70">
           {mode === "signin" ? (
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className="underline hover:text-white"
-            >
+            <button type="button" onClick={() => setMode("signup")} className="underline hover:text-white">
               Create an account
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className="underline hover:text-white"
-            >
+            <button type="button" onClick={() => setMode("signin")} className="underline hover:text-white">
               I already have an account
             </button>
           )}

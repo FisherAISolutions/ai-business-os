@@ -6,6 +6,7 @@ import { MarketingDashboard } from "../components/MarketingDashboard";
 import { generateMarketing } from "../lib/marketing/ai";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
+import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -29,24 +30,33 @@ function readSelection(): SavedSelection | null {
   }
 }
 
-const Phase4Page: React.FC<{ session: any }> = ({ session }) => {
+export default function Phase4Page() {
   const router = useRouter();
+  const { user, subscription, loading } = useAuth();
 
   const [selection, setSelection] = useState<SavedSelection | null>(null);
   const [marketingData, setMarketingData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth gate (Phase 2–5 are paid; Phase 1 is free). Stripe comes next — for now we gate by login.
+  // Auth + subscription gate (Phase 2–5)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (session) return;
+    if (loading) return;
 
-    const redirectedFrom = encodeURIComponent(router.asPath || "/phase4");
-    if (router.pathname !== "/login") {
+    // not signed in
+    if (!user) {
+      const redirectedFrom = encodeURIComponent(router.asPath || "/phase4");
       router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+      return;
     }
-  }, [session, router]);
+
+    // signed in but not subscribed
+    if (!subscription?.active) {
+      const from = encodeURIComponent(router.asPath || "/phase4");
+      router.replace(`/pricing?from=${from}`);
+      return;
+    }
+  }, [loading, user, subscription?.active, router]);
 
   useEffect(() => {
     setSelection(readSelection());
@@ -56,7 +66,7 @@ const Phase4Page: React.FC<{ session: any }> = ({ session }) => {
 
   const handleGenerate = async () => {
     if (!selection) return;
-    setLoading(true);
+    setBusy(true);
     setError(null);
     try {
       const data = await generateMarketing({
@@ -71,9 +81,19 @@ const Phase4Page: React.FC<{ session: any }> = ({ session }) => {
     } catch (e: any) {
       setError(e?.message || "Marketing generation failed.");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
+
+  // While auth is resolving, don't flash the page
+  if (loading || !user || !subscription?.active) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-3xl font-bold">Phase 4 — Marketing</h1>
+        <p className="text-gray-300">Loading…</p>
+      </div>
+    );
+  }
 
   if (!selection) {
     return (
@@ -110,14 +130,18 @@ const Phase4Page: React.FC<{ session: any }> = ({ session }) => {
         </div>
         <button
           onClick={handleGenerate}
-          disabled={loading}
+          disabled={busy}
           className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
         >
-          {loading ? "Generating..." : "Generate Marketing"}
+          {busy ? "Generating..." : "Generate Marketing"}
         </button>
       </div>
 
-      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
+      {error && (
+        <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">
+          {error}
+        </div>
+      )}
 
       {marketingData && (
         <>
@@ -131,6 +155,4 @@ const Phase4Page: React.FC<{ session: any }> = ({ session }) => {
       )}
     </div>
   );
-};
-
-export default Phase4Page;
+}

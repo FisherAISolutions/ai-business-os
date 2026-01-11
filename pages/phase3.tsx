@@ -4,10 +4,16 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { BrandingPreview } from "../components/BrandingPreview";
 import { generateBranding } from "../lib/branding/ai";
-import { generateLandingPage, LandingContent, LandingTemplateId, LandingTheme } from "../lib/branding/landing";
+import {
+  generateLandingPage,
+  LandingContent,
+  LandingTemplateId,
+  LandingTheme,
+} from "../lib/branding/landing";
 import LandingTemplateRenderer from "../components/LandingTemplateRenderer";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
+import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -49,8 +55,6 @@ function buildPageCode(
   brand: any,
   theme: LandingTheme
 ) {
-  // A clean, copy/paste Next.js page (Pages Router)
-  // This is intentionally self-contained so users can drop it into /pages/landing.tsx, etc.
   const safe = JSON.stringify(
     {
       templateId,
@@ -62,7 +66,6 @@ function buildPageCode(
     2
   );
 
-  // NOTE: No styled-jsx to avoid build issues.
   return `// pages/landing.tsx
 import React from "react";
 
@@ -88,13 +91,7 @@ function SectionTitle({ children, theme }: { children: React.ReactNode; theme: L
   );
 }
 
-function Card({
-  children,
-  theme,
-}: {
-  children: React.ReactNode;
-  theme: LandingTheme;
-}) {
+function Card({ children, theme }: { children: React.ReactNode; theme: LandingTheme }) {
   return (
     <div
       className={cx(
@@ -131,9 +128,7 @@ function LandingTemplateRenderer({
     theme === "dark" ? "bg-gray-950 text-white" : "bg-slate-50 text-slate-900"
   );
 
-  const frame = cx(
-    "mx-auto max-w-5xl px-6 py-10"
-  );
+  const frame = cx("mx-auto max-w-5xl px-6 py-10");
 
   const panel = cx(
     "rounded-2xl border p-6 backdrop-blur",
@@ -280,7 +275,12 @@ function LandingTemplateRenderer({
       <div className={pageShell}>
         <div className={frame}>
           <div className={panel}>
-            <div className={cx("rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
+            <div
+              className={cx(
+                "rounded-xl border p-6",
+                theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
+              )}
+            >
               <div className={cx("text-xs uppercase tracking-wide", faintText)}>Offer</div>
               <h1 className={cx("mt-2 text-4xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
                 {c.hero.headline}
@@ -358,7 +358,13 @@ function LandingTemplateRenderer({
               </Card>
             </div>
 
-            <div id="contact" className={cx("mt-8 rounded-xl border p-6", theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white")}>
+            <div
+              id="contact"
+              className={cx(
+                "mt-8 rounded-xl border p-6",
+                theme === "dark" ? "border-white/10 bg-black/20" : "border-slate-200 bg-white"
+              )}
+            >
               <div className={cx("text-2xl font-bold", theme === "dark" ? "text-white" : "text-slate-900")}>
                 {c.finalCta.title}
               </div>
@@ -464,7 +470,7 @@ function LandingTemplateRenderer({
   );
 }
 
-export default function LandingPage() {
+export default function LandingPageExport() {
   const data = ${safe} as {
     templateId: LandingTemplateId;
     content: LandingContent;
@@ -484,8 +490,9 @@ export default function LandingPage() {
 `;
 }
 
-const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
+export default function Phase3Page() {
   const router = useRouter();
+  const { user, subscription, loading } = useAuth();
 
   const [selection, setSelection] = useState<SavedSelection | null>(null);
 
@@ -499,19 +506,24 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
   const [loadingLanding, setLoadingLanding] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
-
   const [exportCode, setExportCode] = useState<string>("");
 
-  // Auth gate (Phase 2–5 are paid; Phase 1 is free). Stripe comes next — for now we gate by login.
+  // Auth + subscription gate (Phase 2–5)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (session) return;
+    if (loading) return;
 
-    const redirectedFrom = encodeURIComponent(router.asPath || "/phase3");
-    if (router.pathname !== "/login") {
+    if (!user) {
+      const redirectedFrom = encodeURIComponent(router.asPath || "/phase3");
       router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+      return;
     }
-  }, [session, router]);
+
+    if (!subscription?.active) {
+      const from = encodeURIComponent(router.asPath || "/phase3");
+      router.replace(`/pricing?from=${from}`);
+      return;
+    }
+  }, [loading, user, subscription?.active, router]);
 
   useEffect(() => {
     const sel = readSelection();
@@ -545,10 +557,7 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
       });
       setBranding(data);
 
-      // Phase 1 is always complete if we have a selection
       setPhaseCompleted("phase1", true);
-
-      // Do NOT auto-mark phase3 done here. We mark it after a landing page is generated.
     } catch (e: any) {
       setError(e?.message || "Branding generation failed.");
     } finally {
@@ -608,7 +617,6 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
         );
       }
 
-      // Mark phase completion
       setPhaseCompleted("phase1", true);
       setPhaseCompleted("phase3", true);
     } catch (e: any) {
@@ -626,9 +634,10 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
     }
   };
 
-  // keep export code in sync if user switches theme AFTER generation
+  // keep export code in sync if user switches theme/template AFTER generation
   useEffect(() => {
     if (!landing) return;
+
     const code = buildPageCode(
       templateId,
       landing,
@@ -658,6 +667,16 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme, templateId]);
 
+  // While auth is resolving, don't flash content
+  if (loading || !user || !subscription?.active) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-3xl font-bold">Phase 3 — Branding & Website</h1>
+        <p className="text-gray-300">Loading…</p>
+      </div>
+    );
+  }
+
   if (!selection) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
@@ -685,7 +704,11 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
         </p>
       </div>
 
-      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
+      {error && (
+        <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">
+          {error}
+        </div>
+      )}
 
       {/* Step 1 */}
       <div className="p-4 rounded-lg bg-gray-800 border border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -816,7 +839,9 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="font-semibold text-white">Export page code</div>
-                <div className="text-sm text-white/60">Copy/paste into your project as a real Next.js page (Pages Router).</div>
+                <div className="text-sm text-white/60">
+                  Copy/paste into your project as a real Next.js page (Pages Router).
+                </div>
               </div>
 
               <button
@@ -839,6 +864,4 @@ const Phase3Page: React.FC<{ session: any }> = ({ session }) => {
       )}
     </div>
   );
-};
-
-export default Phase3Page;
+}

@@ -1,18 +1,13 @@
 // components/Topbar.tsx
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "../lib/auth/AuthContext";
 
-export default function Topbar({ session }: { session?: any }) {
+export default function Topbar() {
   const router = useRouter();
-  const email = session?.user?.email;
+  const { user, signOut, loading } = useAuth();
 
-  const redirectedFrom = encodeURIComponent(router.asPath || "/");
-
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/");
-  };
+  const email = user?.email;
 
   return (
     <header className="bg-gray-700 p-4 flex justify-between items-center border-b border-white/10">
@@ -22,7 +17,9 @@ export default function Topbar({ session }: { session?: any }) {
       </div>
 
       <div className="flex items-center gap-2">
-        {session ? (
+        {loading ? (
+          <span className="text-sm text-white/60">Loading…</span>
+        ) : user ? (
           <>
             <span className="hidden md:block text-sm text-gray-200">{email}</span>
 
@@ -52,14 +49,7 @@ export default function Topbar({ session }: { session?: any }) {
             </Link>
 
             <Link
-              href={`/login?redirectedFrom=${redirectedFrom}&mode=signup`}
-              className="rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-500/15"
-            >
-              Create account
-            </Link>
-
-            <Link
-              href={`/login?redirectedFrom=${redirectedFrom}`}
+              href={`/login?redirectedFrom=${encodeURIComponent(router.asPath || "/")}`}
               className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
             >
               Sign in

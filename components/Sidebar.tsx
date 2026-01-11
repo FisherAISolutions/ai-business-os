@@ -1,18 +1,11 @@
 // components/Sidebar.tsx
 import Link from "next/link";
 import { useRouter } from "next/router";
-import React, { useEffect, useState } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "../lib/auth/AuthContext";
 
 export default function Sidebar() {
   const router = useRouter();
-  const [session, setSession] = useState<any>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => setSession(sess ?? null));
-    return () => listener.subscription.unsubscribe();
-  }, []);
+  const { user, subscription, loading } = useAuth();
 
   const phases = [
     { id: "phase1", label: "Phase 1", href: "/phase1", free: true },
@@ -21,6 +14,8 @@ export default function Sidebar() {
     { id: "phase4", label: "Phase 4", href: "/phase4" },
     { id: "phase5", label: "Phase 5", href: "/phase5" },
   ];
+
+  const isPro = !!user && (subscription.active || subscription.status === "trialing");
 
   return (
     <aside className="w-64 bg-gray-800 p-4">
@@ -32,22 +27,26 @@ export default function Sidebar() {
         </Link>
 
         {phases.map((p) => {
-          const locked = !p.free && !session;
-          const isActive = router.pathname === p.href;
+          const locked = !p.free && !loading && (!user || !isPro);
+          const active = router.pathname === p.href;
 
           return (
             <Link
               key={p.id}
-              href={p.href}
+              href={locked ? "/pricing" : p.href}
               className={[
-                "text-sm rounded px-3 py-2 transition",
-                isActive ? "bg-white/10" : "hover:bg-white/10",
-                locked ? "opacity-70" : "",
+                "text-sm rounded px-3 py-2 flex items-center justify-between",
+                active ? "bg-white/10" : "hover:bg-white/10",
+                locked ? "opacity-60" : "",
               ].join(" ")}
+              title={locked ? "Subscribe to unlock" : undefined}
             >
-              {p.label}
-              {p.free && <span className="ml-2 text-xs bg-emerald-500/20 px-2 rounded">Free</span>}
-              {locked && <span className="ml-2 text-xs">🔒</span>}
+              <span>
+                {p.label}
+                {p.free && <span className="ml-2 text-xs bg-emerald-500/20 px-2 rounded">Free</span>}
+              </span>
+
+              {locked && <span className="text-xs">🔒</span>}
             </Link>
           );
         })}

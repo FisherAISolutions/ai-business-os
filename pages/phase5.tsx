@@ -6,6 +6,7 @@ import { GrowthDashboard } from "../components/GrowthDashboard";
 import { generateContinuousGrowth } from "../lib/growth/ai";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
 import type { BusinessIdea, FounderProfile } from "../types/business";
+import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -29,24 +30,31 @@ function readSelection(): SavedSelection | null {
   }
 }
 
-const Phase5Page: React.FC<{ session: any }> = ({ session }) => {
+export default function Phase5Page() {
   const router = useRouter();
+  const { user, subscription, loading } = useAuth();
 
   const [selection, setSelection] = useState<SavedSelection | null>(null);
   const [growthData, setGrowthData] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth gate (Phase 2–5 are paid; Phase 1 is free). Stripe comes next — for now we gate by login.
+  // Auth + subscription gate (Phase 2–5)
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (session) return;
+    if (loading) return;
 
-    const redirectedFrom = encodeURIComponent(router.asPath || "/phase5");
-    if (router.pathname !== "/login") {
+    if (!user) {
+      const redirectedFrom = encodeURIComponent(router.asPath || "/phase5");
       router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+      return;
     }
-  }, [session, router]);
+
+    if (!subscription?.active) {
+      const from = encodeURIComponent(router.asPath || "/phase5");
+      router.replace(`/pricing?from=${from}`);
+      return;
+    }
+  }, [loading, user, subscription?.active, router]);
 
   useEffect(() => {
     setSelection(readSelection());
@@ -56,7 +64,7 @@ const Phase5Page: React.FC<{ session: any }> = ({ session }) => {
 
   const handleGenerate = async () => {
     if (!selection) return;
-    setLoading(true);
+    setBusy(true);
     setError(null);
     try {
       const data = await generateContinuousGrowth({
@@ -71,9 +79,18 @@ const Phase5Page: React.FC<{ session: any }> = ({ session }) => {
     } catch (e: any) {
       setError(e?.message || "Growth generation failed.");
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
+
+  if (loading || !user || !subscription?.active) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-3xl font-bold">Phase 5 — Growth & Automation</h1>
+        <p className="text-gray-300">Loading…</p>
+      </div>
+    );
+  }
 
   if (!selection) {
     return (
@@ -110,18 +127,20 @@ const Phase5Page: React.FC<{ session: any }> = ({ session }) => {
         </div>
         <button
           onClick={handleGenerate}
-          disabled={loading}
+          disabled={busy}
           className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
         >
-          {loading ? "Generating..." : "Generate Growth Plan"}
+          {busy ? "Generating..." : "Generate Growth Plan"}
         </button>
       </div>
 
-      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
+      {error && (
+        <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">
+          {error}
+        </div>
+      )}
 
       {growthData && <GrowthDashboard data={growthData} />}
     </div>
   );
-};
-
-export default Phase5Page;
+}
