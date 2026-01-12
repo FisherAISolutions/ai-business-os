@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
-import { firePurchaseOnce } from "../lib/roku";
+import { rokuEvent } from "../lib/roku";
 
 type SubscriptionState = {
   active: boolean;
@@ -13,7 +13,6 @@ type SubscriptionState = {
 
 export default function AccountPage() {
   const router = useRouter();
-
   const [session, setSession] = useState<any>(null);
   const [subscription, setSubscription] = useState<SubscriptionState>({
     active: false,
@@ -31,16 +30,6 @@ export default function AccountPage() {
       setSubscription({ active: false, status: null, currentPeriodEnd: null });
     }
   }
-
-  // ✅ Fire Roku PURCHASE after Stripe success redirect
-  useEffect(() => {
-    if (!router.isReady) return;
-
-    // Stripe success_url: /account?checkout=success
-    if (router.query.checkout === "success") {
-      firePurchaseOnce("roku_purchase_fired");
-    }
-  }, [router.isReady, router.query.checkout]);
 
   useEffect(() => {
     let mounted = true;
@@ -64,6 +53,18 @@ export default function AccountPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fire PURCHASE once when arriving from a successful checkout
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const q = router.query?.checkout;
+    if (q === "success") {
+      rokuEvent("PURCHASE");
+
+      // Optional: clean URL so refresh doesn't re-fire purchase
+      router.replace("/account", undefined, { shallow: true });
+    }
+  }, [router]);
 
   async function openPortal() {
     setLoading(true);

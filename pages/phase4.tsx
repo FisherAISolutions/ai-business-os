@@ -16,6 +16,7 @@ type SavedSelection = {
 };
 
 const SELECTION_KEY = "ai-business-os:selected-idea";
+const BUSINESS_NAME_KEY = "ai-business-os:business-name";
 
 function readSelection(): SavedSelection | null {
   if (typeof window === "undefined") return null;
@@ -30,18 +31,56 @@ function readSelection(): SavedSelection | null {
   }
 }
 
+function readBusinessNameFallback(selection: SavedSelection | null) {
+  if (typeof window === "undefined") return selection?.idea?.name ?? "";
+  const saved = window.localStorage.getItem(BUSINESS_NAME_KEY);
+  if (saved && saved.trim()) return saved.trim();
+  return selection?.idea?.name ?? "";
+}
+
+function tryParseMarketing(data: any): any {
+  // If it's already an object, good.
+  if (data && typeof data === "object") return data;
+
+  // If it's a string, try:
+  // 1) JSON.parse directly
+  // 2) Extract first {...} block and parse
+  if (typeof data === "string") {
+    const s = data.trim();
+
+    try {
+      return JSON.parse(s);
+    } catch {}
+
+    // extract JSON object block
+    const firstBrace = s.indexOf("{");
+    const lastBrace = s.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const chunk = s.slice(firstBrace, lastBrace + 1);
+      try {
+        return JSON.parse(chunk);
+      } catch {}
+    }
+  }
+
+  // otherwise return null and let UI show a friendly error
+  return null;
+}
+
 export default function Phase4Page() {
   const router = useRouter();
-  const { user, subscription, loading } = useAuth();
+  const { user, subscription, loading: authLoading } = useAuth();
 
   const [selection, setSelection] = useState<SavedSelection | null>(null);
   const [marketingData, setMarketingData] = useState<any>(null);
-  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth + subscription gate (Phase 2–5)
+  const businessName = useMemo(() => readBusinessNameFallback(selection), [selection]);
+
+  // Gate (Phase 4 is paid)
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
 
     if (!user) {
       const redirectedFrom = encodeURIComponent(router.asPath || "/phase4");
@@ -54,40 +93,47 @@ export default function Phase4Page() {
       router.replace(`/pricing?from=${from}`);
       return;
     }
-  }, [loading, user, subscription?.active, router]);
+  }, [authLoading, user, subscription?.active, router]);
 
   useEffect(() => {
     setSelection(readSelection());
   }, []);
 
-  const businessName = useMemo(() => selection?.idea?.name || "", [selection]);
-
   const handleGenerate = async () => {
     if (!selection) return;
-    setBusy(true);
+    setLoading(true);
     setError(null);
     try {
-      const data = await generateMarketing({
+      const raw = await generateMarketing({
         founder: selection.founder,
-        businessName: selection.idea.name,
+        businessName: businessName || selection.idea.name,
         location: selection.founder.location || "USA",
       });
-      setMarketingData(data);
+
+      const parsed = tryParseMarketing(raw);
+
+      if (!parsed) {
+        throw new Error(
+          "AI response was not valid JSON. (Your generator returned extra text.) Try again, or we’ll harden the backend formatter next."
+        );
+      }
+
+      setMarketingData(parsed);
 
       setPhaseCompleted("phase1", true);
       setPhaseCompleted("phase4", true);
     } catch (e: any) {
       setError(e?.message || "Marketing generation failed.");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
   };
 
-  if (loading || !user || !subscription?.active) {
+  if (authLoading || !user || !subscription?.active) {
     return (
       <div className="max-w-3xl mx-auto space-y-4">
         <h1 className="text-3xl font-bold">Phase 4 — Marketing</h1>
-        <p className="text-gray-300">Loading…</p>
+        <p className="text-white/60">Loading…</p>
       </div>
     );
   }
@@ -110,41 +156,41 @@ export default function Phase4Page() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col gap-2">
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
         <h1 className="text-3xl font-bold">Phase 4 — Marketing</h1>
-        <p className="text-gray-300">
-          Business: <span className="font-semibold text-white">{businessName}</span>
+        <p className="mt-2 text-white/70">
+          Business: <span className="font-semibold text-white">{businessName || selection.idea.name}</span>
         </p>
-      </div>
 
-      <div className="p-4 rounded-lg bg-gray-800 border border-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <div>
-          <p className="font-semibold">14-day marketing starter kit</p>
-          <p className="text-sm text-gray-300">
-            Emails, social posts, ad copy, a simple content calendar, and the metrics that matter in your first two weeks.
-          </p>
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleGenerate}
+            disabled={loading}
+            className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-60"
+          >
+            {loading ? "Generating…" : "Generate Marketing"}
+          </button>
+
+          <Link
+            href="/phase5"
+            className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10"
+          >
+            Go to Phase 5 →
+          </Link>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={busy}
-          className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 disabled:opacity-60"
-        >
-          {busy ? "Generating..." : "Generate Marketing"}
-        </button>
       </div>
 
-      {error && <div className="p-3 rounded bg-red-900/40 border border-red-800 text-red-200">{error}</div>}
+      {error && (
+        <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-4 text-red-100">
+          {error}
+        </div>
+      )}
 
       {marketingData && (
-        <>
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
           <MarketingDashboard marketingData={marketingData} />
-          <div className="flex justify-end">
-            <Link href="/phase5" className="px-4 py-2 rounded bg-green-600 hover:bg-green-700">
-              Continue to Phase 5 →
-            </Link>
-          </div>
-        </>
+        </div>
       )}
     </div>
   );

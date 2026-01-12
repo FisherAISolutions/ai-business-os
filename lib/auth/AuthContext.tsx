@@ -27,10 +27,18 @@ const EMPTY_SUB: SubscriptionState = {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionState>(EMPTY_SUB);
+  const [loading, setLoading] = useState(true);
 
-  async function refreshSubscription() {
+  async function refreshSubscription(nextSession?: any | null) {
+    const s = typeof nextSession !== "undefined" ? nextSession : session;
+
+    // If not signed in, subscription must be empty.
+    if (!s?.user?.id) {
+      setSubscription(EMPTY_SUB);
+      return;
+    }
+
     try {
       const res = await fetch("/api/me", { method: "GET" });
       const json = await res.json();
@@ -42,30 +50,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
-    // hard redirect to clear any weird client state
     window.location.href = "/";
   }
 
   useEffect(() => {
-    let mounted = true;
+    let alive = true;
 
     (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (!mounted) return;
-      setSession(data.session ?? null);
-      setLoading(false);
+      setLoading(true);
 
-      // load subscription for the current user
-      await refreshSubscription();
+      const { data } = await supabase.auth.getSession();
+      if (!alive) return;
+
+      const sess = data.session ?? null;
+      setSession(sess);
+
+      // IMPORTANT: load subscription BEFORE turning loading off.
+      await refreshSubscription(sess);
+
+      if (!alive) return;
+      setLoading(false);
     })();
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      // During auth changes, temporarily set loading true to prevent redirect flicker
+      setLoading(true);
+
       setSession(newSession ?? null);
-      await refreshSubscription();
+      await refreshSubscription(newSession ?? null);
+
+      setLoading(false);
     });
 
     return () => {
-      mounted = false;
+      alive = false;
       listener.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       subscription,
       loading,
-      refreshSubscription,
+      refreshSubscription: () => refreshSubscription(),
       signOut,
     }),
     [session, user, subscription, loading]

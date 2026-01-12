@@ -1,11 +1,14 @@
 // pages/phase2.tsx
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
 import type { BusinessIdea, FounderProfile } from "../types/business";
 import { generateLegalSetup } from "../lib/legal/ai";
 import { LegalChecklist } from "../components/LegalChecklist";
 import { templates } from "../lib/legal/templates";
 import LegalFormsBoard from "../components/LegalFormsBoard";
 import { setPhaseCompleted } from "../lib/utils/phaseProgress";
+import { useAuth } from "../lib/auth/AuthContext";
 
 type SavedSelection = {
   savedAt: string;
@@ -46,6 +49,9 @@ function readBusinessNameFallback(selection: SavedSelection | null) {
 }
 
 export default function Phase2Page() {
+  const router = useRouter();
+  const { user, subscription, loading: authLoading } = useAuth();
+
   const [selection, setSelection] = useState<SavedSelection | null>(null);
   const [legalSetup, setLegalSetup] = useState<LegalSetup | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,22 +60,38 @@ export default function Phase2Page() {
   const [progress, setProgress] = useState({ completed: 0, total: 0, percent: 0 });
   const [businessName, setBusinessName] = useState("");
 
+  // Gate Phase 2: requires login + active subscription
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!user) {
+      const redirectedFrom = encodeURIComponent(router.asPath || "/phase2");
+      router.replace(`/login?redirectedFrom=${redirectedFrom}`);
+      return;
+    }
+
+    if (!subscription?.active) {
+      const from = encodeURIComponent(router.asPath || "/phase2");
+      router.replace(`/pricing?from=${from}`);
+      return;
+    }
+  }, [authLoading, user, subscription?.active, router]);
+
   useEffect(() => {
     const sel = readSelection();
     setSelection(sel);
     setBusinessName(readBusinessNameFallback(sel));
   }, []);
 
-  // persist business name
+  // persist business name so it flows to phase3/4/5
   useEffect(() => {
     if (typeof window === "undefined") return;
-    if (!businessName) return;
-    window.localStorage.setItem(BUSINESS_NAME_KEY, businessName);
+    if (!businessName.trim()) return;
+    window.localStorage.setItem(BUSINESS_NAME_KEY, businessName.trim());
   }, [businessName]);
 
   const location = selection?.founder?.location ?? "USA";
 
-  // generate only when user clicks (NOT auto-run) — avoids “missing required fields” surprises
   async function handleGenerate() {
     if (!selection) return;
 
@@ -84,13 +106,10 @@ export default function Phase2Page() {
     setError(null);
     setLoading(true);
     try {
-      // Keep signature compatible with your existing lib/legal/ai
       const aiResult = await generateLegalSetup(selection.founder, bn, loc);
-
       if (!aiResult) throw new Error("Legal setup returned empty result.");
       setLegalSetup(aiResult);
 
-      // Phase 1 is "done" if a selection exists
       setPhaseCompleted("phase1", true);
     } catch (e: any) {
       setError(e?.message ?? "Failed to generate legal setup.");
@@ -106,14 +125,22 @@ export default function Phase2Page() {
   }, [progress]);
 
   const templateLinks = useMemo(() => {
-    // Prefer AI-returned links if present, otherwise map names to your local templates map.
     const fromAi = legalSetup?.templates?.length ? legalSetup.templates : [];
     if (fromAi.length) return fromAi;
 
-    // fallback list from your template map keys (nice default)
     const keys = Object.keys(templates || {});
     return keys.map((k) => ({ name: k, link: (templates as any)[k] || "" }));
   }, [legalSetup]);
+
+  // While auth decides, show loading (prevents “flash” redirects)
+  if (authLoading || !user || !subscription?.active) {
+    return (
+      <div className="max-w-3xl mx-auto space-y-4">
+        <h1 className="text-3xl font-bold">Phase 2 — Business Setup & Legal</h1>
+        <p className="text-white/60">Loading…</p>
+      </div>
+    );
+  }
 
   if (!selection) {
     return (
@@ -145,7 +172,6 @@ export default function Phase2Page() {
           Location: <span className="text-white">{location}</span>
         </p>
 
-        {/* Business name input */}
         <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4">
           <div className="text-xs uppercase tracking-wide text-white/50">Business name</div>
           <input
@@ -206,7 +232,6 @@ export default function Phase2Page() {
           </div>
         </div>
 
-        {/* Generate button */}
         <div className="mt-5 flex flex-wrap gap-3">
           <button
             onClick={handleGenerate}
@@ -244,7 +269,6 @@ export default function Phase2Page() {
             <p className="mt-2 text-white/70">{legalSetup.recommendedStructure}</p>
           </div>
 
-          {/* ✅ This matches the component props below */}
           <LegalChecklist
             checklist={legalSetup.checklist || []}
             storageKey={LEGAL_PROGRESS_KEY}
@@ -277,11 +301,7 @@ export default function Phase2Page() {
             <p className="mt-2 whitespace-pre-wrap text-white/70">{legalSetup.notes}</p>
           </div>
 
-          {/* ✅ This matches the component props below */}
-          <LegalFormsBoard
-            storageKey={LEGAL_PROGRESS_KEY}
-            businessType={legalSetup.recommendedStructure}
-          />
+          <LegalFormsBoard storageKey={LEGAL_PROGRESS_KEY} businessType={legalSetup.recommendedStructure} />
         </>
       )}
     </div>
