@@ -2,14 +2,12 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { supabase } from "../lib/supabaseClient";
+import { useAuth } from "../lib/auth/AuthContext";
 
-type Props = {
-  session?: any;
-};
-
-export default function Topbar({ session }: Props) {
+export default function Topbar() {
   const router = useRouter();
-  const email = session?.user?.email;
+  const { user } = useAuth();
+  const email = user?.email ?? null;
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -24,7 +22,7 @@ export default function Topbar({ session }: Props) {
       </div>
 
       <div className="flex items-center gap-2">
-        {session ? (
+        {user ? (
           <>
             <span className="hidden md:block text-sm text-gray-200">{email}</span>
 
